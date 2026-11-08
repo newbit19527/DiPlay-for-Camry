@@ -227,6 +227,10 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private var connectionPanel: View? = null
     private val connectionProgressPanel by lazy { com.shilapi.xcertplay.connection.ConnectionProgressPanel(this) }
+    /** Full-screen Apple/CarPlay-style waiting UI; falls back to connectionProgressPanel. */
+    private val connectionScreen by lazy {
+        com.shilapi.xcertplay.connection.CamryConnectionScreen(this, connectionProgressPanel)
+    }
     private var connectionInstructionsView: TextView? = null
     private var connectionHelpView: TextView? = null
     private var feedbackButton: DiPlayButton? = null
@@ -2211,7 +2215,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         panel.addView(stage)
         (connectionProgressPanel.parent as? android.view.ViewGroup)?.removeView(connectionProgressPanel)
-        connectionProgressPanel.pendingTransport(wirelessEnabled,
+        connectionScreen.pendingTransport(wirelessEnabled,
             wirelessHotspotMode == WirelessHotspotMode.PIONEER_VEHICLE)
         panel.addView(connectionProgressPanel, LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = dp(10); bottomMargin = dp(6)
@@ -2303,7 +2307,7 @@ class CarPlayHostActivity : ComponentActivity() {
             // The connection screen is DiPlay chrome: follow the app theme, not the day/night mode sent to CarPlay.
             val colors = WaitingScreenColors.of(appNight)
             viewport.setBackgroundColor(colors.background)
-            connectionProgressPanel.setNight(appNight)
+            connectionScreen.setNight(appNight)
             updateNotice?.setNight(appNight)
             title.setTextColor(colors.text)
             stage.setTextColor(colors.text)
@@ -2333,6 +2337,16 @@ class CarPlayHostActivity : ComponentActivity() {
             addView(preparationContent, FrameLayout.LayoutParams(-1, -2))
         }
         viewport.addView(preparationScroll, FrameLayout.LayoutParams(-1, -1))
+        // Apple/CarPlay-style waiting screen from a bundled asset. The native preparation
+        // layout stays in the tree as a fallback for head units without a working WebView.
+        val webLayer = connectionScreen
+        webLayer.onAction = { action -> handleConnectionScreenAction(action) }
+        webLayer.onFallback = {
+            preparationScroll.visibility = View.VISIBLE
+            webLayer.visibility = View.GONE
+        }
+        viewport.addView(webLayer, FrameLayout.LayoutParams(-1, -1))
+        if (webLayer.isAvailable) preparationScroll.visibility = View.GONE
         root.addView(viewport, FrameLayout.LayoutParams(-1, -1))
         // Above the video and gesture layer, below the menus.
         sidePanelBlur = ImageView(this).apply {
@@ -5705,6 +5719,7 @@ class CarPlayHostActivity : ComponentActivity() {
                         vpnReady = false
                         vpnRootAttempted = false
                         startupRetryButton?.visibility = View.VISIBLE
+                        syncConnectionScreenActions()
                         setStatus(R.string.vpn_root_failed)
                         appendLog("VPN_PERMISSION_REVOKED; stopped automatic recovery")
                         val revokedController = controller
@@ -5784,8 +5799,10 @@ class CarPlayHostActivity : ComponentActivity() {
             is CarPlayStatus.Failed -> if (status.wifiResetRequired) {
                 ConnectionAnalytics.failed(connectionAnalyticsProgress, "wifi_reset_required")
                 wifiRecoveryButton?.visibility = View.VISIBLE
+                syncConnectionScreenActions()
             } else {
                 wifiRecoveryButton?.visibility = View.GONE
+                syncConnectionScreenActions()
                 if (status.startupFailure != null) {
                     if (startupFailureGeneration == controllerGeneration) return@report
                     startupFailureGeneration = controllerGeneration
@@ -5849,7 +5866,7 @@ class CarPlayHostActivity : ComponentActivity() {
             }
         }
 
-        connectionProgressPanel.bind(snapshot.controller.connectionProgress)
+        connectionScreen.bind(snapshot.controller.connectionProgress)
         connectionAnalyticsProgress = snapshot.controller.connectionProgress
         val generation = restartGeneration
         snapshot.controller.attachUi(
@@ -5926,12 +5943,13 @@ class CarPlayHostActivity : ComponentActivity() {
             Log.e(TAG, "invalid CarPlay runtime configuration", e)
             ConnectionAnalytics.failed(connectionAnalyticsProgress, "invalid_configuration")
             startupRetryStopped = true
-            connectionProgressPanel.failed()
+            connectionScreen.failed()
             startupRetryButton?.visibility = View.VISIBLE
+            syncConnectionScreenActions()
             setConnectionStage(getString(R.string.connection_config_invalid))
             return
         }
-        val progress = connectionProgressPanel.begin(config)
+        val progress = connectionScreen.begin(config)
         connectionAnalyticsProgress = progress
         ConnectionAnalytics.attach(applicationContext, config, progress,
             if (intent.action == android.hardware.usb.UsbManager.ACTION_USB_DEVICE_ATTACHED) "usb_attach"
@@ -6363,10 +6381,11 @@ class CarPlayHostActivity : ComponentActivity() {
     }
 
     private fun stopPioneerRecovery(reason: String) {
-        connectionProgressPanel.failed()
+        connectionScreen.failed()
         startupRetryStopped = true
         ConnectionAnalytics.failed(connectionAnalyticsProgress)
         startupRetryButton?.visibility = View.VISIBLE
+        syncConnectionScreenActions()
         setConnectionStage("$reason\nUSB CarPlay recovery stopped after $pioneerRecoveryAttempts retries; tap Retry to start again.")
         appendLog("PIONEER_RECOVERY_EXHAUSTED attempts=$pioneerRecoveryAttempts reason=$reason")
         controller?.close()
@@ -6410,8 +6429,9 @@ class CarPlayHostActivity : ComponentActivity() {
         if (startupFailure != null && startupDelay == null) {
             startupRetryStopped = true
             ConnectionAnalytics.failed(connectionAnalyticsProgress)
-            connectionProgressPanel.failed()
+            connectionScreen.failed()
             startupRetryButton?.visibility = View.VISIBLE
+            syncConnectionScreenActions()
             if (startupFailure == WirelessStartupFailure.HOTSPOT_CONFIGURATION) {
                 // Its cause is in English, for the report; the help line below says what to check.
                 setConnectionStage("${getString(R.string.hotspot_network_not_ready)}\n" +
@@ -6427,7 +6447,7 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         reconnectScheduled = true
         ConnectionAnalytics.retry(connectionAnalyticsProgress)
-        connectionProgressPanel.retrying()
+        connectionScreen.retrying()
         callPopupSessionReady = false
         updateCallPopupGuard()
         val generation = restartGeneration
@@ -6472,9 +6492,10 @@ class CarPlayHostActivity : ComponentActivity() {
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress) return
         val size = activeDisplaySize ?: return
         ConnectionAnalytics.restart(applicationContext, wirelessEnabled, connectionAnalyticsProgress, automaticRetry, analyticsSource)
-        connectionProgressPanel.retrying()
+        connectionScreen.retrying()
         startupRetryBudget.disconnected()
         startupRetryButton?.visibility = View.GONE
+        syncConnectionScreenActions()
         appendLog(reason)
         activeScreenStreamTypes.clear()
         ClusterActivityOutput.setStreamActive(false)
@@ -6517,8 +6538,9 @@ class CarPlayHostActivity : ComponentActivity() {
                         startupRetryStopped = true
                         ConnectionAnalytics.failed(connectionAnalyticsProgress, "teardown_incomplete")
                         appendLog("Vehicle wireless teardown incomplete; keeping the previous lease protected instead of starting an overlapping session")
-                        connectionProgressPanel.failed()
+                        connectionScreen.failed()
                         if (wirelessEnabled) startupRetryButton?.visibility = View.VISIBLE
+                        syncConnectionScreenActions()
                         setConnectionStage(R.string.connect_progress_failed)
                         return@runOnUiThread
                     }
@@ -6528,6 +6550,27 @@ class CarPlayHostActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Actions from the bundled connection screen reuse the native buttons' logic verbatim. */
+    private fun handleConnectionScreenAction(action: String) {
+        when (action) {
+            "back", "nav-home" -> showDiPlayHome()
+            "nav-settings" -> openSettingsMenu()
+            "nav-connect" -> Unit
+            "retry" -> startupRetryButton?.performClick()
+            "reset" -> wifiRecoveryButton?.performClick()
+            "feedback" -> feedbackButton?.performClick()
+        }
+    }
+
+    /** Keep the asset's action row in sync with the native buttons that own the behaviour. */
+    private fun syncConnectionScreenActions() {
+        connectionScreen.showActions(
+            retry = startupRetryButton?.visibility == View.VISIBLE,
+            reset = wifiRecoveryButton?.visibility == View.VISIBLE,
+            feedback = feedbackButton?.visibility == View.VISIBLE,
+        )
     }
 
     private fun showDiPlayHome(page: String = "home") {
@@ -6783,7 +6826,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private fun shutdown(terminateProcess: Boolean, reason: String, completion: () -> Unit = {}) {
         if (!shuttingDown.compareAndSet(false, true)) { completion(); return }
         ConnectionAnalytics.cancel(connectionAnalyticsProgress)
-        connectionProgressPanel.cancelled()
+        connectionScreen.cancelled()
         callPopupSessionReady = false
         updateCallPopupGuard()
         resetSidePanel()
@@ -7295,12 +7338,19 @@ class CarPlayHostActivity : ComponentActivity() {
             if (failure != null) text = getString(ConnectionFailureGuidance.message(failure, wirelessEnabled, wirelessHotspotMode))
         }
         feedbackButton?.visibility = if (failure == null) View.GONE else View.VISIBLE
+        connectionScreen.setGuidance(failure?.let {
+            getString(ConnectionFailureGuidance.message(it, wirelessEnabled, wirelessHotspotMode))
+        })
+        syncConnectionScreenActions()
     }
 
     /** [englishMessage] is [message] in English, which [friendlyStage] reads for its keywords. */
     private fun setConnectionStage(message: String, englishMessage: String = message) {
         latestStage = message
-        stageStatusView?.text = friendlyStage(message, englishMessage)
+        val friendly = friendlyStage(message, englishMessage)
+        stageStatusView?.text = friendly
+        connectionScreen.setStage(friendly.replace('\n', ' ').trim())
+        syncConnectionScreenActions()
         updateDebugOverlays()
     }
 
