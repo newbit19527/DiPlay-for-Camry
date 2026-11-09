@@ -55,7 +55,7 @@ internal object DiagnosticBundle {
                         "Missing/denied/timeout entries are not successful collections. System logcat is a filtered current buffer, not a complete boot history.\n" +
                         "Bluetooth/Blueforce system components are intentionally excluded; bluetooth/state.txt is a read-only state snapshot.\n" +
                         "HUD libraries, service executables, TPS code and their dependencies are included when available. OEM navigation/settings APKs and their optimized code are excluded.\n" +
-                        "hud/state.json, settings.json and recent.ndjson describe the current process; firmware.json is a read-only export check, not proof startup passed.\n" +
+                        "hud/state.json, settings.json and recent.ndjson describe the current process; firmware.json records the current hashes of three navigation libraries.\n" +
                         "No settings database, pairing keys, hotspot passwords or protocol payloads are intentionally exported.\n"
                 }
             }

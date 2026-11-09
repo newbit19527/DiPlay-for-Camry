@@ -84,7 +84,7 @@ class FeedbackBundleTest {
     }
 
     @Test
-    fun hudEvidencePreservesTypedVerdictsAndRedactsPrivateFields() {
+    fun hudEvidencePreservesHashesAndRedactsPrivateFields() {
         val snapshot = PioneerDebugRuntime.navigationHudSnapshot
         val config = CamryHudSettings.load(context)
         val output = File(context.cacheDir, "feedback-hud.zip")
@@ -94,13 +94,12 @@ class FeedbackBundleTest {
             val state = JSONObject().put("updatedAtMs", System.currentTimeMillis())
                 .put("sdkSuccesses", 12).put("sdkFailures", 1).put("road", "private-road")
                 .put("originalMap", JSONObject().put("filter", JSONObject().put("ready", false)
-                    .put("error", "HUD_FILTER_FIRMWARE_MISMATCH").put("token", "private-token")))
+                    .put("error", "HUD_FILTER_ACK_TIMEOUT").put("token", "private-token")))
             PioneerDebugRuntime.navigationHudSnapshot = { state }
             PioneerHudDiagnostics.checkpoint(state)
             FeedbackBundle.build(context, meta(), output) {
                 PioneerDiagnosticReader.Item("hud_firmware", "success",
-                    JSONObject().put("passed", false).put("status", "mismatch")
-                        .put("actualSha256", hash).put("expectedSha256", "b".repeat(64)).toString())
+                    JSONObject().put("status", "read").put("actualSha256", hash).toString())
             }
             ZipFile(output).use { zip ->
                 fun read(name: String) = zip.getInputStream(zip.getEntry(name)).reader().readText()
@@ -113,9 +112,9 @@ class FeedbackBundleTest {
                 assertFalse(settings.getBoolean("enabled"))
                 assertEquals(600, settings.getInt("fixedMeters"))
                 val firmware = JSONObject(read("hud/firmware.json"))
-                assertFalse(firmware.getBoolean("passed"))
                 assertEquals(hash, firmware.getString("actualSha256"))
-                assertEquals("mismatch", firmware.getString("status"))
+                assertEquals("read", firmware.getString("status"))
+                assertFalse(firmware.has("passed")); assertFalse(firmware.has("expectedSha256"))
                 val recent = read("hud/recent.ndjson").lineSequence().filter { it.isNotBlank() }
                     .map { JSONObject(it) }.toList()
                 assertTrue(recent.size >= 2)

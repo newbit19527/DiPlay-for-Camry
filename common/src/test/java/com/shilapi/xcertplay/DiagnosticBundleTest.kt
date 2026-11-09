@@ -57,10 +57,10 @@ class DiagnosticBundleTest {
     @Test fun structuredHudEvidenceSurvivesExportAndRedactsValuesWithoutBreakingJson() {
         val file = Files.createTempFile("hud-evidence", ".zip").toFile()
         val hash = "a".repeat(64)
-        val state = JSONObject().put("passed", true).put("status", "pass")
-            .put("expectedSha256", hash).put("actualSha256", hash)
+        val state = JSONObject().put("status", "read")
+            .put("actualSha256", hash)
             .put("accessToken", "private-token").put("road", "private-road")
-            .put("exceptionChain", ("at Method.requirePassed()\n").repeat(50))
+            .put("exceptionChain", ("at Method.observe()\n").repeat(50))
             .put("error", "peer=192.168.1.2 password=secret")
         try {
             DiagnosticArchive(file).use { archive ->
@@ -70,8 +70,8 @@ class DiagnosticBundleTest {
             ZipFile(file).use { zip ->
                 val exported = JSONObject(zip.getInputStream(zip.getEntry("hud/state.json")).reader().readText())
                 assertEquals(hash, exported.getString("actualSha256"))
-                assertEquals(hash, exported.getString("expectedSha256"))
-                assertTrue(exported.getBoolean("passed")); assertEquals("pass", exported.getString("status"))
+                assertEquals("read", exported.getString("status"))
+                assertFalse(exported.has("expectedSha256")); assertFalse(exported.has("passed"))
                 assertFalse(exported.has("accessToken")); assertFalse(exported.has("road"))
                 assertTrue(exported.getString("exceptionChain").length > 700)
                 assertFalse(exported.toString().contains("password=secret"))

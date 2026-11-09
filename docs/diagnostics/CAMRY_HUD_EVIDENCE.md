@@ -41,4 +41,6 @@ hud/state.json
 
 ## 系统组件
 
-普通导出不再扫描或复制系统 APK、JAR、ODEX/VDEX 和 native 库，避免大体积二进制挤占采集预算。系统版本、服务/进程、网络/防火墙文本和仪表库哈希继续保留。确需反编译时，工程排查时，可将当前手机端导出链接的 `/report` 改为同一带令牌链接下的 `/report-components`，显式下载含组件的包；两种包独立缓存且沿用相同访问保护。这不是普通用户需要开启的选项。
+普通导出会通过 root 只读通道采集 HUD 定向组件：三个仪表库、`/system/bin/MeterServer`、`/system/bin/SettingServer`、TPS 代码及其 `oat` 产物、framework boot 文件、目标进程映射，以及这些 ELF 的 DT_NEEDED 依赖。清单写入 `hud/components.json`，进程 maps 另存为 `hud/process-maps/*.txt`。上限为 256 个文件、单文件 128 MiB、组件总量 256 MiB，超出部分在 manifest 中标记为 `truncated`/`skipped`。原车导航与设置 APK 及其预编译产物、Bluetooth/Blueforce 组件不采集。
+
+`/report-components` 在此基础上额外追加更广的系统组件（`system/component_inventory.txt`、选定的系统库、TPS 包信息等），仍沿用同一带令牌链接和访问保护。两种包独立缓存。

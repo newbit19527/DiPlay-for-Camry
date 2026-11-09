@@ -251,10 +251,16 @@ final class PioneerHudComponentInventory {
         String name = file.getName(); int dot = name.lastIndexOf('.');
         if (dot < 0) return;
         String stem = name.substring(0, dot);
+        boolean bootClasspath = file.getParentFile() != null && "framework".equals(file.getParentFile().getName());
         for (String arch : new String[]{"arm", "arm64", "x86", "x86_64"})
             for (String ext : new String[]{".odex", ".vdex", ".oat", ".art"}) {
                 File code = new File(file.getParentFile(), "oat/" + arch + "/" + stem + ext);
                 if (code.isFile()) add(code, "framework_compiled");
+                if (bootClasspath) {
+                    // Boot jars are compiled beside the arch directory as boot-<stem>.<ext>.
+                    File boot = new File(file.getParentFile(), arch + "/boot-" + stem + ext);
+                    if (boot.isFile()) add(boot, "boot_framework");
+                }
             }
     }
     private void dependencies(File file) throws Exception {

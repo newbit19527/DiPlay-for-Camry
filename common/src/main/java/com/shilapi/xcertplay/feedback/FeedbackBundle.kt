@@ -145,9 +145,9 @@ internal object FeedbackBundle {
 
 This archive contains a redacted diagnostic summary, bounded DiPlay session logs, and a crash
 record when one exists, plus bounded HUD settings, state and recent metadata. HUD firmware
-verification collects only hashes of three navigation libraries through the shared root service.
-See manifest.json for unavailable or size-limited evidence. HUD state/history describe the current
-process; firmware.json is a read-only export check, not proof that startup verification passed.
+evidence records only the current hashes of three navigation libraries through the shared root
+service. See manifest.json for unavailable or size-limited evidence. HUD state/history describe
+the current process; firmware.json records those hashes for diagnosis.
 It does not intentionally include pairing keys, hotspot passwords,
 protocol payloads, system code, installed-package inventories, phone names, Bluetooth addresses,
 SSIDs or IP addresses.

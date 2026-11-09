@@ -17,7 +17,7 @@ internal object HudDiagnosticComponents {
             return
         }
         val processes = inventory.optJSONArray("processes") ?: JSONArray()
-        for (i in 0 until minOf(processes.length(), 16)) {
+        for (i in 0 until processes.length()) {
             val process = processes.optJSONObject(i) ?: continue
             val maps = process.remove("maps") as? String ?: continue
             val path = "hud/process-maps/$i.txt"
