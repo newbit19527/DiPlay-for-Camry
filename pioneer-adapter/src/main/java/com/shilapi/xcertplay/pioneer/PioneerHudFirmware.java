@@ -4,34 +4,30 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
 
-/** Read-only firmware hash evidence. Mismatches are recorded for diagnosis but never block the filter. */
+/** Reads the meter libraries' SHA-256 as diagnostics only. No allow-list: every firmware is supported. */
 final class PioneerHudFirmware {
-    static final String[][] MODULES = {
-        {"/system/lib/libmeterservice.so", "20d3521ff1294d3a56579e1b0c649be581a94a9a0276a362ad79e130271dc660"},
-        {"/system/lib/libmeterservice_jni.so", "e880f91b1932645d3ae2a83b739aa24c1fb0209cbc3f393b5f0539ef7981dbbc"},
-        {"/system/lib/libNPMeterHandler.so", "937c951c9594057fed65be0bd41163379cca4a48c9ccd2f9b91929cdee2b49a6"}
+    static final String[] PATHS = {
+        "/system/lib/libmeterservice.so",
+        "/system/lib/libmeterservice_jni.so",
+        "/system/lib/libNPMeterHandler.so"
     };
     interface HashReader { String sha(String path) throws Exception; }
     static JSONObject inspect(String scope, HashReader reader) throws Exception {
         JSONArray modules = new JSONArray();
-        boolean passed = true;
-        for (String[] module : MODULES) {
-            JSONObject item = new JSONObject().put("path", module[0]).put("expectedSha256", module[1]);
+        for (String path : PATHS) {
+            JSONObject item = new JSONObject().put("path", path);
             try {
-                String actual = reader.sha(module[0]);
+                String actual = reader.sha(path);
                 if (!actual.matches("[0-9a-fA-F]{64}")) throw new IOException("Invalid SHA-256 output");
-                boolean match = module[1].equalsIgnoreCase(actual);
-                item.put("actualSha256", actual.toLowerCase(java.util.Locale.ROOT)).put("status", match ? "pass" : "mismatch");
-                passed &= match;
+                item.put("actualSha256", actual.toLowerCase(java.util.Locale.ROOT)).put("status", "read");
             } catch (Exception error) {
                 item.put("actualSha256", JSONObject.NULL).put("status", "read_failed")
                     .put("error", error.toString().substring(0, Math.min(1024, error.toString().length())));
-                passed = false;
             }
             modules.put(item);
         }
         return new JSONObject().put("scope", scope).put("checkedAtMs", System.currentTimeMillis())
-            .put("passed", passed).put("modules", modules);
+            .put("modules", modules);
     }
     static String javaSha(String path, java.util.concurrent.Callable<Boolean> current) throws Exception {
         java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");

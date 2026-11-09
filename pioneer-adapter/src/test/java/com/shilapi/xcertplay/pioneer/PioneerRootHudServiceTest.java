@@ -35,12 +35,13 @@ public class PioneerRootHudServiceTest {
     }
     @Test public void startupFirmwareEvidenceIsIncludedInStatusWithoutStartingInjector() throws Exception {
         try (PioneerRootHudService service = new PioneerRootHudService(owner(), new File("unused"), (o, f, h) -> {})) {
-            JSONObject evidence = PioneerHudFirmware.inspect("startup_read_only_not_enforced", path -> "0".repeat(64));
+            JSONObject evidence = PioneerHudFirmware.inspect("startup_hash_evidence", path -> "0".repeat(64));
             service.firmwareVerification(evidence);
-            evidence.put("passed", true); // service owns an immutable copy
+            evidence.put("scope", "mutated"); // service owns an immutable copy
             JSONObject snapshot = service.handle("HUD_STATUS", new JSONObject());
-            assertFalse(snapshot.getJSONObject("firmwareVerification").getBoolean("passed"));
-            assertEquals(3, snapshot.getJSONObject("firmwareVerification").getJSONArray("modules").length());
+            JSONObject verification = snapshot.getJSONObject("firmwareVerification");
+            assertEquals("startup_hash_evidence", verification.getString("scope"));
+            assertEquals(3, verification.getJSONArray("modules").length());
             assertFalse(snapshot.getBoolean("ready"));
         }
     }

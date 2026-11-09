@@ -35,9 +35,8 @@ public final class PioneerHudFilterHelper {
             CamryAdaptation.INSTANCE.useRequestMode(request);
             if (!PioneerUsbPolicy.INSTANCE.matchesDevice()) throw new IOException("HUD_FILTER_UNSUPPORTED_DEVICE");
             requireOwner(request);
-            // Hashes are diagnostic evidence only; unsupported firmware must not block injection.
-            JSONObject firmware = PioneerHudFirmware.inspect("startup_read_only_not_enforced",
-                path -> sha(new File(path))).put("enforced", false);
+            // No allow-list: hashes are recorded for diagnosis only.
+            JSONObject firmware = PioneerHudFirmware.inspect("startup_hash_evidence", path -> sha(new File(path)));
             host.firmwareVerification(firmware);
             File root = new File(ROOT);
             directory(root, 0, 0755);

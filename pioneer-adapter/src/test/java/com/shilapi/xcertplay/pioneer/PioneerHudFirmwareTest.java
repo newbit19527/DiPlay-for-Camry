@@ -12,34 +12,30 @@ import static org.junit.Assert.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 25, manifest = Config.NONE)
 public class PioneerHudFirmwareTest {
-    private String expected(String path) {
-        for (String[] module : PioneerHudFirmware.MODULES) if (module[0].equals(path)) return module[1];
-        throw new AssertionError(path);
-    }
-    @Test public void recordsAllExpectedAndActualHashes() throws Exception {
+    @Test public void recordsActualHashesForEveryModuleWithoutAVerdict() throws Exception {
         AtomicInteger reads = new AtomicInteger();
-        JSONObject evidence = PioneerHudFirmware.inspect("startup_read_only_not_enforced", path -> { reads.incrementAndGet(); return expected(path); });
-        assertEquals(3, reads.get()); assertTrue(evidence.getBoolean("passed"));
+        JSONObject evidence = PioneerHudFirmware.inspect("startup_hash_evidence",
+            path -> { reads.incrementAndGet(); return "a".repeat(64); });
+        assertEquals(3, reads.get());
         assertEquals(3, evidence.getJSONArray("modules").length());
-        JSONObject first = evidence.getJSONArray("modules").getJSONObject(0);
-        assertEquals(first.getString("expectedSha256"), first.getString("actualSha256"));
+        assertFalse(evidence.has("passed"));
+        for (int i = 0; i < 3; i++) {
+            JSONObject module = evidence.getJSONArray("modules").getJSONObject(i);
+            assertEquals("read", module.getString("status"));
+            assertEquals("a".repeat(64), module.getString("actualSha256"));
+            assertFalse(module.has("expectedSha256"));
+        }
     }
-    @Test public void unsupportedFirmwareIsRecordedWithoutBlockingStartup() throws Exception {
-        JSONObject evidence = PioneerHudFirmware.inspect("startup_read_only_not_enforced", path -> "0".repeat(64));
-        assertFalse(evidence.getBoolean("passed"));
-        JSONObject first = evidence.getJSONArray("modules").getJSONObject(0);
-        assertEquals("mismatch", first.getString("status"));
-        assertEquals(64, first.getString("actualSha256").length());
-    }
-    @Test public void unreadableModuleDoesNotHideOtherResults() throws Exception {
-        JSONObject evidence = PioneerHudFirmware.inspect("startup_read_only_not_enforced", path -> {
+    @Test public void unreadableModuleIsRecordedWithoutBlockingOthers() throws Exception {
+        JSONObject evidence = PioneerHudFirmware.inspect("startup_hash_evidence", path -> {
             if (path.endsWith("libmeterservice.so")) throw new IOException("Permission denied");
-            return expected(path);
+            return "b".repeat(64);
         });
-        assertEquals("read_failed", evidence.getJSONArray("modules").getJSONObject(0).getString("status"));
-        assertTrue(evidence.getJSONArray("modules").getJSONObject(0).isNull("actualSha256"));
-        assertEquals("pass", evidence.getJSONArray("modules").getJSONObject(1).getString("status"));
-        assertFalse(evidence.getBoolean("passed"));
+        JSONObject first = evidence.getJSONArray("modules").getJSONObject(0);
+        assertEquals("read_failed", first.getString("status"));
+        assertTrue(first.isNull("actualSha256"));
+        assertTrue(first.getString("error").contains("Permission denied"));
+        assertEquals("read", evidence.getJSONArray("modules").getJSONObject(1).getString("status"));
     }
     @Test public void javaHashWorksWithoutAnExternalCommandAndHonorsCancellation() throws Exception {
         java.io.File file = java.io.File.createTempFile("hud-hash", ".bin");
