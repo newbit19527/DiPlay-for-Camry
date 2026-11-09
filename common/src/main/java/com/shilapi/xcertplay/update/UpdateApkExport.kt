@@ -1,12 +1,14 @@
 package com.shilapi.xcertplay.update
 
 import android.content.ContentResolver
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.content.pm.PackageInfoCompat
 import java.io.File
 import java.io.IOException
 
@@ -35,13 +37,18 @@ internal object UpdateApkExport {
         }
     }
 
-    /** Remove historical exports while keeping the newest visible APK for manual recovery. */
-    fun pruneHistory(context: Context) {
+    /** Remove exported DiPlay APKs older than the running version, retaining current and newer copies. */
+    fun pruneHistory(context: Context, currentVersionCode: Long) {
+        if (currentVersionCode <= 0L) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            runCatching { pruneMediaStoreHistory(context.contentResolver) }
+            runCatching { pruneMediaStoreHistory(context, currentVersionCode) }
         }
         context.getExternalFilesDir(null)?.let { base ->
-            runCatching { pruneDirectoryHistory(File(base, "update")) }
+            runCatching {
+                pruneDirectoryHistory(File(base, "update"), currentVersionCode) { file ->
+                    archiveVersionCode(context, file.absolutePath)
+                }
+            }
         }
     }
 
@@ -52,43 +59,54 @@ internal object UpdateApkExport {
         return apk.copyTo(File(directory, apk.name), overwrite = true)
     }
 
-    internal fun pruneDirectoryHistory(directory: File) {
+    internal fun pruneDirectoryHistory(
+        directory: File,
+        currentVersionCode: Long,
+        versionCodeOf: (File) -> Long?,
+    ) {
         if (!directory.isDirectory) return
         directory.listFiles().orEmpty()
             .filter { it.isFile && it.extension.equals("apk", ignoreCase = true) }
-            .sortedByDescending(File::lastModified)
-            .drop(1)
-            .forEach(File::delete)
+            .forEach { file ->
+                val versionCode = runCatching { versionCodeOf(file) }.getOrNull()
+                if (versionCode != null && versionCode < currentVersionCode) file.delete()
+            }
     }
 
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
-    private fun pruneMediaStoreHistory(resolver: ContentResolver) {
+    private fun pruneMediaStoreHistory(context: Context, currentVersionCode: Long) {
+        val resolver = context.contentResolver
         val projection = arrayOf(
             MediaStore.Downloads._ID,
-            MediaStore.Downloads.DATE_ADDED,
         )
-        val rows = mutableListOf<Pair<Long, Long>>()
+        val ids = mutableListOf<Long>()
         resolver.query(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
             projection,
             "${MediaStore.Downloads.RELATIVE_PATH}=? AND ${MediaStore.Downloads.MIME_TYPE}=?",
             arrayOf("$DOWNLOADS_DIRECTORY/", APK_MIME),
-            "${MediaStore.Downloads.DATE_ADDED} DESC, ${MediaStore.Downloads._ID} DESC",
+            null,
         )?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Downloads._ID)
-            val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Downloads.DATE_ADDED)
-            while (cursor.moveToNext()) rows += cursor.getLong(idColumn) to cursor.getLong(dateColumn)
+            while (cursor.moveToNext()) ids += cursor.getLong(idColumn)
         }
-        rows.drop(1).forEach { (id, _) ->
-            resolver.delete(
-                android.content.ContentUris.withAppendedId(
-                    MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-                    id,
-                ),
-                null,
-                null,
-            )
+        ids.forEach { id ->
+            runCatching {
+                val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
+                val versionCode = resolver.openFileDescriptor(uri, "r")?.use { descriptor ->
+                    archiveVersionCode(context, "/proc/self/fd/${descriptor.fd}")
+                }
+                if (versionCode != null && versionCode < currentVersionCode) {
+                    resolver.delete(uri, null, null)
+                }
+            }
         }
+    }
+
+    private fun archiveVersionCode(context: Context, path: String): Long? {
+        val archive = context.packageManager.getPackageArchiveInfo(path, 0) ?: return null
+        if (archive.packageName != context.packageName) return null
+        return PackageInfoCompat.getLongVersionCode(archive)
     }
 
     @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)

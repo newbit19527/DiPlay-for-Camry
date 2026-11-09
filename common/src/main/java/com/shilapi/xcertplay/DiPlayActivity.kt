@@ -100,6 +100,7 @@ import com.shilapi.xcertplay.update.UpdateChannelStore
 import com.shilapi.xcertplay.update.UpdateChecksums
 import com.shilapi.xcertplay.update.UpdateClient
 import com.shilapi.xcertplay.update.UpdateDownloadCache
+import com.shilapi.xcertplay.update.UpdateMaintenance
 import com.shilapi.xcertplay.update.UpdateLookupResult
 import com.shilapi.xcertplay.update.UpdateRelease
 import com.shilapi.xcertplay.update.UpdateReleaseLookup
@@ -398,10 +399,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Thread({
-            UpdateDownloadCache.cleanupForProcessStart(this)
-            UpdateApkExport.pruneHistory(this)
-        }, "diplay-update-cache-cleanup").apply { isDaemon = true }.start()
+        UpdateMaintenance.schedule(applicationContext, installedVersionCode())
         com.shilapi.xcertplay.pioneer.PioneerDebugRuntime.log(this,
             "UI_ROUTE home create action=${intent.action} page=${intent.getStringExtra("page")} session=${CarPlayBackgroundSession.hasSession()} host=${CarPlayBackgroundSession.hasHost()}")
         PioneerDebugIntegration.ensure(this)

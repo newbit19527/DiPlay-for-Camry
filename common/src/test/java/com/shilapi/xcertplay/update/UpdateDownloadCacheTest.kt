@@ -26,22 +26,29 @@ class UpdateDownloadCacheTest {
         assertFalse(older.exists())
     }
 
-    @Test fun legacyExportDirectoryKeepsOnlyNewestApk() {
+    @Test fun legacyExportDirectoryRemovesOnlyOlderVersionsRegardlessOfTimestamp() {
         val directory = files.newFolder("legacy")
-        val oldest = File(directory, "old.apk").apply {
+        val olderButNewerTimestamp = File(directory, "old.apk").apply {
             writeText("old")
-            setLastModified(1_000L)
+            setLastModified(3_000L)
         }
-        val newest = File(directory, "new.apk").apply {
-            writeText("new")
+        val current = File(directory, "current.apk").apply {
+            writeText("current")
             setLastModified(2_000L)
         }
+        val newer = File(directory, "newer.apk").apply { writeText("newer") }
+        val unknown = File(directory, "unknown.apk").apply { writeText("unknown") }
         val unrelated = File(directory, "notes.txt").apply { writeText("keep") }
+        val versions = mapOf("old.apk" to 99L, "current.apk" to 100L, "newer.apk" to 101L)
 
-        UpdateApkExport.pruneDirectoryHistory(directory)
+        UpdateApkExport.pruneDirectoryHistory(directory, currentVersionCode = 100L) {
+            versions[it.name]
+        }
 
-        assertFalse(oldest.exists())
-        assertTrue(newest.exists())
+        assertFalse(olderButNewerTimestamp.exists())
+        assertTrue(current.exists())
+        assertTrue(newer.exists())
+        assertTrue(unknown.exists())
         assertTrue(unrelated.exists())
     }
 }
