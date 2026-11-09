@@ -1103,4 +1103,6 @@
     <string name="feedback_network_requirement">需要車機連網；無網路時會先儲存</string>
     <string name="feedback_send_this_issue">回饋此問題</string>
     <string name="feedback_settings_summary">匿名回饋與診斷日誌</string>
+        <string name="settings_apple_connection_screen">Apple 風格連線畫面（實驗性）</string>
+        <string name="settings_apple_connection_screen_description">顯示 Apple 風格的全螢幕連線等待畫面，取代經典版面。下次連線時生效；若車機無法呈現，則回退到經典版面。</string>
 </resources>

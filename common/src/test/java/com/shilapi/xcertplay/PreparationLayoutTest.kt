@@ -3,6 +3,7 @@ package com.shilapi.xcertplay
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.FrameLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import com.shilapi.xcertplay.host.R
 import org.junit.Assert.*
@@ -31,7 +32,18 @@ class PreparationLayoutTest {
         // The viewport is named; a video-only overlay can be inserted before it.
         val viewport = CarPlayHostActivity::class.java.getDeclaredField("connectionPanel")
             .apply { isAccessible = true }.get(activity) as FrameLayout
-        val preparationScroll = viewport.getChildAt(0) as android.widget.ScrollView
+        // The Apple/CarPlay-style WebView layer is added after the native preparation
+        // ScrollView, and hides it (View.GONE) while WebView is available. A GONE child
+        // is skipped by FrameLayout.measure/layout, so its noticeView was never measured
+        // and lineCount stayed 0. Find the ScrollView by type (stable id/tag is added by
+        // the host) and force it visible for the layout assertions below: this test is
+        // about the native preparation layout's own readability, independent of which
+        // of the two screens is currently shown.
+        val preparationScroll = (0 until viewport.childCount)
+            .map(viewport::getChildAt)
+            .filterIsInstance<ScrollView>()
+            .first()
+        preparationScroll.visibility = View.VISIBLE
         val content = preparationScroll.getChildAt(0) as LinearLayout
         val noticeView = content.getChildAt(0) as TextView
         val panel = content.getChildAt(1) as LinearLayout

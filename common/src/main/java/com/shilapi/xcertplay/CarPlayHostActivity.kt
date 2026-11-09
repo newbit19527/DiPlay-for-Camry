@@ -2338,7 +2338,10 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         viewport.addView(preparationScroll, FrameLayout.LayoutParams(-1, -1))
         // Apple/CarPlay-style waiting screen from a bundled asset. The native preparation
-        // layout stays in the tree as a fallback for head units without a working WebView.
+        // layout stays in the tree as a fallback for head units without a working WebView,
+        // and remains the default until the driver opts in from Settings > Advanced.
+        // Both layers stay attached: connectionScreen owns the progress model and mirrors
+        // every state change into the legacy panel, so switching never loses history.
         val webLayer = connectionScreen
         webLayer.onAction = { action -> handleConnectionScreenAction(action) }
         webLayer.onFallback = {
@@ -2346,7 +2349,10 @@ class CarPlayHostActivity : ComponentActivity() {
             webLayer.visibility = View.GONE
         }
         viewport.addView(webLayer, FrameLayout.LayoutParams(-1, -1))
-        if (webLayer.isAvailable) preparationScroll.visibility = View.GONE
+        val appleStyle = ConnectionScreenStylePreferences.isAppleStyleEnabled(this) &&
+            webLayer.isAvailable
+        webLayer.visibility = if (appleStyle) View.VISIBLE else View.GONE
+        preparationScroll.visibility = if (appleStyle) View.GONE else View.VISIBLE
         root.addView(viewport, FrameLayout.LayoutParams(-1, -1))
         // Above the video and gesture layer, below the menus.
         sidePanelBlur = ImageView(this).apply {

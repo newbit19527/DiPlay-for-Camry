@@ -1102,4 +1102,6 @@
     <string name="feedback_network_requirement">需要车机联网；无网络时会先保存</string>
     <string name="feedback_send_this_issue">反馈此问题</string>
     <string name="feedback_settings_summary">匿名反馈与诊断日志</string>
+        <string name="settings_apple_connection_screen">苹果风格连接界面（实验性）</string>
+        <string name="settings_apple_connection_screen_description">显示苹果风格的全屏连接等待界面，取代经典布局。下次连接时生效；若车机无法渲染，则回退到经典布局。</string>
 </resources>

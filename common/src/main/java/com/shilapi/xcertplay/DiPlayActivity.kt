@@ -2272,6 +2272,14 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }
         filteredSection(content, SettingsSection.EXPERIMENTAL_DISPLAY,
             getString(R.string.settings_experimental_display), R.drawable.ic_dp_display) { card ->
+            // Opt-in until the new waiting screen is stable. It is read when the host
+            // builds its content view, so the change lands at the next connection.
+            toggle(card, getString(R.string.settings_apple_connection_screen),
+                getString(R.string.settings_apple_connection_screen_description),
+                ConnectionScreenStylePreferences.isAppleStyleEnabled(this)) { enabled ->
+                ConnectionScreenStylePreferences.saveAppleStyleEnabled(this, enabled)
+                markReconnectNeeded()
+            }
             toggle(card, getString(R.string.settings_harman_fullscreen_experimental),
                 getString(R.string.settings_harman_fullscreen_experimental_description),
                 AirPlayPersistence.loadHarmanFullscreen(this)) { enabled ->
