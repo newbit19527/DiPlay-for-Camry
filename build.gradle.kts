@@ -12,6 +12,10 @@ plugins {
     alias(libs.plugins.compose.multiplatform) apply false
 }
 
+// Source-only validation builds intentionally exclude runtime credentials, so they must not
+// require the signing identity used for distributable APKs.
+val sourceOnlyBuild = providers.gradleProperty("diplaySourceOnly").map { it.toBoolean() }.getOrElse(false)
+
 // One signing identity serves every application module, debug and release alike, and the WeCarFlow
 // repack. Provision the material with scripts/provision-signing.sh; it stays outside Git.
 fun readSigningProperties(text: String): Map<String, String> {
@@ -43,7 +47,7 @@ val signingValues = mapOf(
 )
 val signingConfigured = signingValues.values.all { !it.isNullOrBlank() }
 
-if (!signingConfigured) {
+if (!signingConfigured && !sourceOnlyBuild) {
     logger.warn(
         "Shared signing identity is incomplete. APK assembly will fail; run scripts/provision-signing.sh or set " +
             "ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.",
@@ -80,6 +84,10 @@ subprojects {
                 }
             }
         }
-        tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(checkSharedSigning) }
+        tasks.matching { it.name == "preBuild" }.configureEach {
+            if (!sourceOnlyBuild) {
+                dependsOn(checkSharedSigning)
+            }
+        }
     }
 }

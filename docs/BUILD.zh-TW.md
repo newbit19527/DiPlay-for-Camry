@@ -121,9 +121,9 @@ DIPLAY_AUTH_ASSETS_DIR=/absolute/path/to/runtime-assets ./gradlew :mobile:assemb
 3. `ANDROID_KEYSTORE_PATH`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`
 4. `storeFile` 另可回退到 `.signing/repack.keystore`
 
-簽章身分不完整時，`checkSharedSigning` 會在產生 APK 之前失敗；單元測試與 lint 不受影響，沒有簽章素材的 checkout 仍可以正常執行測試。換用其他 keystore 後，已安裝的應用無法原地更新，必須先解除安裝，其資料一併消失。
+簽章身分不完整時，`checkSharedSigning` 會在產生 APK 之前失敗；使用 `-PdiplaySourceOnly=true` 時會跳過簽章檢查，只產生 source-only 驗證 APK。單元測試與 lint 不受影響，沒有簽章素材的 checkout 仍可以正常執行測試。換用其他 keystore 後，已安裝的應用無法原地更新，必須先解除安裝，其資料一併消失。
 
-GitHub Actions 從倉庫 secrets `SIGNING_KEYSTORE_BASE64`、`SIGNING_KEYSTORE_PASSWORD`、`SIGNING_KEY_ALIAS`、`SIGNING_KEY_PASSWORD` 取得同樣四個值，在 Gradle 執行前寫出 `.signing/`，因此 CI 與本機使用相同憑證。
+GitHub Actions 在可用時從倉庫 secrets `SIGNING_KEYSTORE_BASE64`、`SIGNING_KEYSTORE_PASSWORD`、`SIGNING_KEY_ALIAS`、`SIGNING_KEY_PASSWORD` 取得同樣四個值，並在 Gradle 執行前寫出 `.signing/`。來自 fork 的 pull request 不會取得倉庫 secrets，CI 會改以 source-only 模式繼續，不會因此失敗；同倉庫建置則與本機使用相同憑證。
 
 ## 正式版建置
 

@@ -79,16 +79,16 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-37.0 build-tools;36.0.0
-      - name: Provision shared signing keystore
+      - name: Provision shared signing keystore (optional)
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
           SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
-            echo "::error::Set the SIGNING_KEYSTORE_BASE64 repository secret; values come from scripts/provision-signing.sh."
-            exit 1
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ] || [ -z "$SIGNING_KEYSTORE_PASSWORD" ] || [ -z "$SIGNING_KEY_ALIAS" ] || [ -z "$SIGNING_KEY_PASSWORD" ]; then
+            echo "::notice::Signing secrets are unavailable; continuing in source-only mode."
+            exit 0
           fi
           mkdir -p .signing
           printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > .signing/repack.keystore
@@ -132,16 +132,16 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-37.0 build-tools;36.0.0
-      - name: Provision shared signing keystore
+      - name: Provision shared signing keystore (optional)
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
           SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
-            echo "::error::Set the SIGNING_KEYSTORE_BASE64 repository secret; values come from scripts/provision-signing.sh."
-            exit 1
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ] || [ -z "$SIGNING_KEYSTORE_PASSWORD" ] || [ -z "$SIGNING_KEY_ALIAS" ] || [ -z "$SIGNING_KEY_PASSWORD" ]; then
+            echo "::notice::Signing secrets are unavailable; continuing in source-only mode."
+            exit 0
           fi
           mkdir -p .signing
           printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > .signing/repack.keystore
@@ -187,16 +187,16 @@ jobs:
       - uses: android-actions/setup-android@v3
         with:
           packages: platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.10.2.4988404
-      - name: Provision shared signing keystore
+      - name: Provision shared signing keystore (optional)
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
           SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
-          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
-            echo "::error::Set the SIGNING_KEYSTORE_BASE64 repository secret; values come from scripts/provision-signing.sh."
-            exit 1
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ] || [ -z "$SIGNING_KEYSTORE_PASSWORD" ] || [ -z "$SIGNING_KEY_ALIAS" ] || [ -z "$SIGNING_KEY_PASSWORD" ]; then
+            echo "::notice::Signing secrets are unavailable; continuing in source-only mode."
+            exit 0
           fi
           mkdir -p .signing
           printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 -d > .signing/repack.keystore

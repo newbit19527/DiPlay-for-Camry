@@ -172,14 +172,15 @@ Each value resolves in this order:
 3. `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
 4. `storeFile` additionally falls back to `.signing/repack.keystore`
 
-While the identity is incomplete, `checkSharedSigning` fails before any APK is produced.
-Unit tests and lint do not depend on it, so a checkout without signing material can still be tested.
+While the identity is incomplete, `checkSharedSigning` fails before any APK is produced, except with `-PdiplaySourceOnly=true`; that mode skips the signing check and produces only a source-only validation APK. Unit tests and lint do not depend on it, so a checkout without signing material can still be tested.
 Re-signing with a different key means the installed apps cannot be updated in place: uninstall them
 first and accept that their data goes with them.
 
 GitHub Actions reads the same four values from the `SIGNING_KEYSTORE_BASE64`,
 `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS` and `SIGNING_KEY_PASSWORD` repository secrets and
-materialises `.signing/` before Gradle runs, so CI signs with the same certificate as local builds.
+materialises `.signing/` before Gradle runs when they are available. Fork pull requests do not
+receive repository secrets, so CI continues in source-only mode instead of failing; same-repository
+builds sign with the same certificate as local builds.
 
 ## Build a release APK
 
