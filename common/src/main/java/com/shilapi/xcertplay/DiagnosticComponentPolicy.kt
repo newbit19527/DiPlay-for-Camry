@@ -10,7 +10,6 @@ package com.shilapi.xcertplay
 internal object DiagnosticComponentPolicy {
     private val excluded = Regex("(?i).*(blueforce|bluetooth).*")
     private val libraryName = Regex("(?i).*(pioneer|ceam|wifi|tether).*(\\.so|\\.jar)$")
-    private val packageName = Regex("(?i).*(pioneer|ceam|wifi|tether).*")
 
     val explicitFiles: List<String> = listOf(
         "/system/framework/framework.jar",
@@ -24,5 +23,5 @@ internal object DiagnosticComponentPolicy {
         !excluded.matches(name) && libraryName.matches(name)
 
     fun isSelectedPackage(name: String): Boolean =
-        !excluded.matches(name) && packageName.matches(name)
+        name == "jp.pioneer.ceam.thirdpartyservice"
 }

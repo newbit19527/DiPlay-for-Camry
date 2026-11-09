@@ -114,7 +114,7 @@ class DiagnosticBundleTest {
                 assertTrue(zip.getInputStream(zip.getEntry("report.txt")).reader().readText().contains(id!!))
                 val manifest = zip.getInputStream(zip.getEntry("manifest.json")).reader().readText()
                 assertTrue(manifest.contains("unavailable"))
-                assertTrue(manifest.contains("not_requested_for_standard_export"))
+                assertTrue(manifest.replace("\\/", "/").contains("hud/components.json"))
             }
         } finally { file.delete(); CamryAdaptation.save(app, previous) }
     }

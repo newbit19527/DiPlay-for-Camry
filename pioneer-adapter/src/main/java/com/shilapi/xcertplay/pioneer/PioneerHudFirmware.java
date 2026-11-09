@@ -3,8 +3,6 @@ package com.shilapi.xcertplay.pioneer;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /** One whitelist for startup enforcement and read-only export evidence. Never weakens the gate. */
 final class PioneerHudFirmware {
@@ -45,24 +43,18 @@ final class PioneerHudFirmware {
                 " actual=" + item.opt("actualSha256") + " error=" + item.optString("error"));
         }
     }
-    static String[] command() {
-        String[] args = new String[MODULES.length + 1];
-        args[0] = "sha256sum";
-        for (int i = 0; i < MODULES.length; i++) args[i + 1] = MODULES[i][0];
-        return args;
-    }
-    static String commandReport(String output, int exit) throws Exception {
-        Map<String, String> hashes = new LinkedHashMap<>();
-        for (String line : output.split("\\r?\\n")) {
-            String[] pair = line.trim().split("\\s+", 2);
-            if (pair.length == 2 && pair[0].matches("[0-9a-fA-F]{64}")) hashes.put(pair[1].replaceFirst("^\\*", ""), pair[0]);
+    static String javaSha(String path, java.util.concurrent.Callable<Boolean> current) throws Exception {
+        java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+        try (java.io.InputStream in = new java.io.FileInputStream(path)) {
+            byte[] buffer = new byte[16384]; int n; long total = 0;
+            while ((n = in.read(buffer)) != -1) {
+                if (!current.call() || Thread.currentThread().isInterrupted()) throw new IOException("DIAGNOSTIC_CANCELLED");
+                if ((total += n) > 64L * 1024 * 1024) throw new IOException("HASH_SIZE_LIMIT");
+                digest.update(buffer, 0, n);
+            }
         }
-        String error = output.substring(0, Math.min(1024, output.length()));
-        JSONObject report = inspect("export_read_only_not_startup_verdict", path -> {
-            if (!hashes.containsKey(path)) throw new IOException("sha256sum exit=" + exit + " output=" + error);
-            return hashes.get(path);
-        }).put("commandExit", exit).put("commandSucceeded", exit == 0);
-        if (exit != 0) report.put("passed", false);
-        return report.toString();
+        StringBuilder hex = new StringBuilder();
+        for (byte b : digest.digest()) hex.append(String.format(java.util.Locale.ROOT, "%02x", b & 255));
+        return hex.toString();
     }
 }

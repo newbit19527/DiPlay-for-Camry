@@ -29,11 +29,12 @@ class DiagnosticComponentPolicyTest {
     }
 
     @Test
-    fun keepsNonBluetoothPioneerCeamWifiAndTetherPackages() {
-        assertTrue(DiagnosticComponentPolicy.isSelectedPackage("com.pioneer.headunit"))
-        assertTrue(DiagnosticComponentPolicy.isSelectedPackage("com.ceam.service"))
-        assertTrue(DiagnosticComponentPolicy.isSelectedPackage("com.byd.wifi"))
-        assertTrue(DiagnosticComponentPolicy.isSelectedPackage("com.byd.tether"))
+    fun collectsOnlyThirdPartyServiceAndNeverOemNavigationOrSettings() {
+        assertTrue(DiagnosticComponentPolicy.isSelectedPackage("jp.pioneer.ceam.thirdpartyservice"))
+        for (name in listOf("jp.pioneer.ceam.setting", "jp.pioneer.ceam.settingserverproxy",
+            "com.autonavi.amapauto", "com.tencent.wecarnavi", "com.tencent.wecarspeech")) {
+            assertFalse(name, DiagnosticComponentPolicy.isSelectedPackage(name))
+        }
     }
 
     @Test

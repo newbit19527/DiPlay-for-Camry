@@ -22,7 +22,7 @@ internal object DiagnosticBundle {
             ?.forEachIndexed { index, old -> if (index >= 2 || System.currentTimeMillis() - old.lastModified() > 86_400_000) old.delete() }
         val file = File.createTempFile("diplay-diagnostics-", ".zip", directory)
         try {
-            DiagnosticArchive(file).use { archive ->
+            DiagnosticArchive(file, componentLimit = 128L * 1024 * 1024, totalLimit = 256L * 1024 * 1024).use { archive ->
                 archive.text("report.txt") {
                     val flushed = AsyncDiagnosticLog.awaitIdle(2_000)
                     "Log flush complete=$flushed\n" + report()
@@ -48,13 +48,13 @@ internal object DiagnosticBundle {
                     archive.unavailable("system/root", "collection_failed", it.javaClass.simpleName)
                     archive.unavailable("hud/firmware.json", "unavailable", "root_collection_failed")
                 })
+                HudDiagnosticComponents.append(app, archive)
                 if (includeSystemComponents) appendSystemComponents(app, archive)
-                else archive.unavailable("components", "skipped", "not_requested_for_standard_export")
                 archive.text("README.txt") {
                     "DiPlay diagnostic bundle\nSee manifest.json for collection status, source paths, byte counts and SHA-256.\n" +
                         "Missing/denied/timeout entries are not successful collections. System logcat is a filtered current buffer, not a complete boot history.\n" +
                         "Bluetooth/Blueforce system components are intentionally excluded; bluetooth/state.txt is a read-only state snapshot.\n" +
-                        "System APK/JAR/ODEX and native binaries are excluded unless explicitly requested.\n" +
+                        "HUD libraries, service executables, TPS code and their dependencies are included when available. OEM navigation/settings APKs and their optimized code are excluded.\n" +
                         "hud/state.json, settings.json and recent.ndjson describe the current process; firmware.json is a read-only export check, not proof startup passed.\n" +
                         "No settings database, pairing keys, hotspot passwords or protocol payloads are intentionally exported.\n"
                 }
@@ -68,7 +68,7 @@ internal object DiagnosticBundle {
         } catch (error: Throwable) { file.delete(); throw error }
     }
 
-    /** Explicit engineering opt-in; standard exports never enumerate or copy OS binaries. */
+    /** Optional additional libraries; the targeted HUD component set is always collected. */
     private fun appendSystemComponents(app: Context, archive: DiagnosticArchive) {
         // Read only OS-shipped code, never Bluetooth databases, hotspot configuration or app data.
         // Bluetooth/Blueforce binaries are intentionally excluded; bluetooth/state.txt keeps the
@@ -129,6 +129,7 @@ internal class DiagnosticArchive(
     private val zip = ZipOutputStream(file.outputStream().buffered())
     private val manifest = JSONArray()
     private var written = 0L
+    private val componentPaths = mutableSetOf<String>()
     fun unavailable(path: String, status: String, reason: String) {
         manifest.put(JSONObject().put("path", path).put("status", status).put("reason", reason))
     }
@@ -169,11 +170,13 @@ internal class DiagnosticArchive(
         manifest.put(JSONObject().put("path", path).put("status", if (content.size > textLimit) "truncated" else status)
             .put("bytes", bounded.size).put("sha256", digest(bounded)))
     }
-    fun component(file: File) {
+    fun component(file: File, allowedUpdatedCode: Set<String> = emptySet()) {
         val path = "components" + file.absolutePath
+        if (!componentPaths.add(path)) return
         if (!file.isFile) { unavailable(path, "missing", "not_present"); return }
         val source = runCatching { file.canonicalFile }.getOrNull()
-        if (source == null || listOf("/system/", "/vendor/", "/product/", "/system_ext/").none { source.path.startsWith(it) }) {
+        if (source == null || (listOf("/system/", "/vendor/", "/product/", "/system_ext/").none { source.path.startsWith(it) } &&
+                !(source.path.startsWith("/data/app/") && source.path in allowedUpdatedCode))) {
             unavailable(path, "skipped", "outside_system_partition"); return
         }
         val length = file.length()

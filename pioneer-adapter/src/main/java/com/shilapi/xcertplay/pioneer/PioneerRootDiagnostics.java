@@ -16,7 +16,6 @@ public final class PioneerRootDiagnostics {
     static {
         COMMANDS.put("identity", new String[]{"id"});
         COMMANDS.put("logcat", new String[]{"logcat", "-b", "main", "-b", "system", "-b", "crash", "-d", "-t", "2500", "-v", "threadtime", "*:S", "DiPlay:I", "DiPlayUpdate:I", "DiPlay-USB:E", "DiPlay-Pioneer-Navi:V", "DiPlay-HudFilter:V", "Pioneer:I", "UsbHostManager:I", "UsbDeviceManager:I", "UsbPortManager:I", "AndroidRuntime:E", "DEBUG:E", "ActivityManager:W", "WifiStateMachine:I", "WifiService:I", "wpa_supplicant:I", "hostapd:I", "dnsmasq:I", "Blueforce:I", "BlueforceService:I", "BluetoothAdapter:I", "BluetoothJni:I", "Tethering:I", "WifiController:I", "ConnectivityService:I"});
-        COMMANDS.put("hud_firmware", PioneerHudFirmware.command());
         COMMANDS.put("kernel_usb", new String[]{"dmesg"});
         COMMANDS.put("interfaces", new String[]{"ip", "addr", "show"});
         COMMANDS.put("routes", new String[]{"ip", "route", "show", "table", "all"});
@@ -28,7 +27,10 @@ public final class PioneerRootDiagnostics {
         COMMANDS.put("wifi_link", new String[]{"iw", "dev"});
     }
     private static final Lane lane = new Lane();
-    public static String[] names() { return COMMANDS.keySet().toArray(new String[0]); }
+    public static String[] names() {
+        List<String> names = new ArrayList<>(COMMANDS.keySet()); names.add("hud_firmware");
+        return names.toArray(new String[0]);
+    }
     static String kernelUsbLines(String text) {
         StringBuilder result = new StringBuilder();
         for (String line : text.split("\\r?\\n")) {
@@ -39,6 +41,12 @@ public final class PioneerRootDiagnostics {
         return result.toString();
     }
     static JSONObject run(String name, Callable<Boolean> current) throws Exception {
+        if ("hud_firmware".equals(name)) {
+            JSONObject report = PioneerHudFirmware.inspect("export_read_only_not_startup_verdict",
+                path -> PioneerHudFirmware.javaSha(path, current));
+            if (!current.call()) throw new IOException("DIAGNOSTIC_CANCELLED");
+            return new JSONObject().put("name", name).put("status", "success").put("text", report.toString());
+        }
         String[] command = COMMANDS.get(name);
         if (command == null) throw new IOException("ROOT_DIAGNOSTIC_UNKNOWN_COMMAND");
         return lane.run(name, () -> new ProcessBuilder(command).redirectErrorStream(true).start(), current,
@@ -86,7 +94,6 @@ public final class PioneerRootDiagnostics {
                 if ("kernel_usb".equals(name) && exit != null && exit == 0) text = kernelUsbLines(text);
                 String status = exit == null ? "timeout" : readFailed.get() ? "unavailable" :
                     truncated.get() || reader.isAlive() ? "truncated" : exit != 0 ? "command_failed" : text.isEmpty() ? "empty" : "success";
-                if ("hud_firmware".equals(name) && exit != null) text = PioneerHudFirmware.commandReport(text, exit);
                 return new JSONObject().put("name", name).put("status", status).put("text", text);
             } catch (InterruptedException cancelled) {
                 interrupted = true;

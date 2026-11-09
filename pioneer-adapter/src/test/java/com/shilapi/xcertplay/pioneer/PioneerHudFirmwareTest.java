@@ -43,18 +43,16 @@ public class PioneerHudFirmwareTest {
         assertTrue(assertThrows(IOException.class, () -> PioneerHudFirmware.requirePassed(evidence))
             .getMessage().contains("HUD_FILTER_FIRMWARE_READ_FAILED"));
     }
-    @Test public void exportedHashesAreExplicitlyNotTheStartupVerdict() throws Exception {
-        StringBuilder output = new StringBuilder();
-        for (String[] module : PioneerHudFirmware.MODULES) output.append(module[1]).append("  ").append(module[0]).append('\n');
-        JSONObject evidence = new JSONObject(PioneerHudFirmware.commandReport(output.toString(), 0));
-        assertTrue(evidence.getBoolean("passed"));
-        assertEquals("export_read_only_not_startup_verdict", evidence.getString("scope"));
-        assertFalse(new JSONObject(PioneerHudFirmware.commandReport(output.toString(), 4)).getBoolean("passed"));
-    }
-    @Test public void missingHashCommandPreservesFailure() throws Exception {
-        JSONObject evidence = new JSONObject(PioneerHudFirmware.commandReport("sha256sum: not found", 127));
-        assertFalse(evidence.getBoolean("passed"));
-        assertEquals(127, evidence.getInt("commandExit"));
-        assertTrue(evidence.getJSONArray("modules").getJSONObject(0).getString("error").contains("not found"));
+    @Test public void javaHashWorksWithoutAnExternalCommandAndHonorsCancellation() throws Exception {
+        java.io.File file = java.io.File.createTempFile("hud-hash", ".bin");
+        try {
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(file)) {
+                out.write("abc".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                PioneerHudFirmware.javaSha(file.getPath(), () -> true));
+            assertThrows(IOException.class, () -> PioneerHudFirmware.javaSha(file.getPath(), () -> false));
+            assertTrue(java.util.Arrays.asList(PioneerRootDiagnostics.names()).contains("hud_firmware"));
+        } finally { file.delete(); }
     }
 }
