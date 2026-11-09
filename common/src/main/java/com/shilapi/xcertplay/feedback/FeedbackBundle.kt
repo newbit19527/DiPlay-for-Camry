@@ -1,6 +1,8 @@
 package com.shilapi.xcertplay.feedback
 
 import android.content.Context
+import com.shilapi.xcertplay.HudDiagnosticCollection
+import com.shilapi.xcertplay.pioneer.PioneerDiagnosticReader
 import com.shilapi.xcertplay.DiagnosticArchive
 import com.shilapi.xcertplay.DiPlayPreferences
 import com.shilapi.xcertplay.SessionLogFile
@@ -23,7 +25,10 @@ internal object FeedbackBundle {
     private const val CRASH_LIMIT = 256 * 1024
     private const val LOGCAT_LIMIT = 512 * 1024
 
-    fun build(context: Context, meta: FeedbackMeta, output: File): File {
+    fun build(
+        context: Context, meta: FeedbackMeta, output: File,
+        firmware: (Context) -> PioneerDiagnosticReader.Item = PioneerDiagnosticReader::collectHudFirmware,
+    ): File {
         val app = context.applicationContext
         output.parentFile?.mkdirs()
         output.delete()
@@ -44,6 +49,11 @@ internal object FeedbackBundle {
             archive.raw("feedback.json", scrub(feedbackJson, sensitive).toByteArray(Charsets.UTF_8))
             archive.raw("README.txt", README.toByteArray(Charsets.UTF_8))
             archive.text("report.txt") { report }
+            // Reserve space before session logs; failed root collection must not lose local evidence.
+            HudDiagnosticCollection.appendState(app, archive)
+            runCatching { firmware(app) }.fold({
+                HudDiagnosticCollection.appendFirmware(archive, it)
+            }, { archive.unavailable("hud/firmware.json", "unavailable", it.javaClass.simpleName) })
             crash?.let { archive.text("crash/last-crash.txt") { it } }
             sessionLogs(app).forEach { (name, text) ->
                 archive.text("logs/$name") { text }
@@ -134,7 +144,11 @@ internal object FeedbackBundle {
     private const val README = """DiPlay anonymous feedback bundle
 
 This archive contains a redacted diagnostic summary, bounded DiPlay session logs, and a crash
-record when one exists. It does not intentionally include pairing keys, hotspot passwords,
+record when one exists, plus bounded HUD settings, state and recent metadata. HUD firmware
+verification collects only hashes of three navigation libraries through the shared root service.
+See manifest.json for unavailable or size-limited evidence. HUD state/history describe the current
+process; firmware.json is a read-only export check, not proof that startup verification passed.
+It does not intentionally include pairing keys, hotspot passwords,
 protocol payloads, system code, installed-package inventories, phone names, Bluetooth addresses,
 SSIDs or IP addresses.
 

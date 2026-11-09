@@ -996,7 +996,7 @@
     <string name="feedback_network_offline">No usable network. Feedback is saved and uploads when online.</string>
     <string name="feedback_check_network">Check network</string>
     <string name="feedback_privacy">Anonymous feedback. No account or contact details are collected. Bluetooth addresses, IP addresses and similar fields are removed from logs.</string>
-    <string name="feedback_contents">Includes: device and version, recent DiPlay logs, a crash record if any, and a redacted system log if available.</string>
+    <string name="feedback_contents">Містить: відомості про пристрій і версію, останні журнали DiPlay, налаштування та діагностику HUD, записи про збої й знеособлений системний журнал за наявності.</string>
     <string name="feedback_preparing">Preparing diagnostics…</string>
     <string name="feedback_uploading">Uploading…</string>
     <string name="feedback_queued">Saved. Upload is pending; you can retry.</string>

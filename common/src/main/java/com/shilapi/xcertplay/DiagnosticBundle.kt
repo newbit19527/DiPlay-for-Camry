@@ -31,22 +31,7 @@ internal object DiagnosticBundle {
                     "manufacturer=${Build.MANUFACTURER}\nmodel=${Build.MODEL}\n" +
                         "build=${Build.DISPLAY}\nfingerprint=${Build.FINGERPRINT}\nandroid=${Build.VERSION.RELEASE}\napi=${Build.VERSION.SDK_INT}\nabis=${Build.SUPPORTED_ABIS.joinToString()}\n"
                 }
-                archive.json("hud/state.json") {
-                    val state = com.shilapi.xcertplay.pioneer.PioneerDebugRuntime.hudSnapshot()
-                    state.put("snapshotAvailable", state.length() > 0)
-                        .put("adaptationMode", com.shilapi.xcertplay.pioneer.CamryAdaptation.mode(app).name)
-                        .put("adaptationEnabled", com.shilapi.xcertplay.pioneer.CamryAdaptation.enabled(app))
-                        .put("snapshotAgeMs", state.optLong("updatedAtMs").takeIf { it > 0 }?.let { (System.currentTimeMillis() - it).coerceAtLeast(0) } ?: JSONObject.NULL)
-                        .put("exportedAtMs", System.currentTimeMillis())
-                }
-                archive.json("hud/settings.json") {
-                    val config = com.shilapi.xcertplay.hud.CamryHudSettings.load(app)
-                    JSONObject().put("enabled", config.enabled).put("strategy", config.strategy.name)
-                        .put("fixedMeters", config.fixedMeters).put("turnMeters", config.turnMeters)
-                        .put("complexMeters", config.complexMeters).put("straightMeters", config.straightMeters)
-                        .put("advance", config.advance.name)
-                }
-                archive.jsonLines("hud/recent.ndjson") { com.shilapi.xcertplay.pioneer.PioneerHudDiagnostics.recent() }
+                HudDiagnosticCollection.appendState(app, archive)
                 runCatching { PioneerVehicleWireless.diagnosticSnapshot(DiPlayPreferences.phoneAddress(app)) }.fold({ state ->
                     val status = if (state.contains("status=complete")) "success" else "incomplete"
                     archive.text("bluetooth/state.txt", status) { state }
@@ -54,11 +39,8 @@ internal object DiagnosticBundle {
                 runCatching { PioneerDiagnosticReader.collect(app) }.fold({ items ->
                     items.forEach {
                         val path = if (it.name == "hud_firmware") "hud/firmware.json" else "system/${it.name}.txt"
-                        if (it.name == "hud_firmware") archive.json(path, it.status) {
-                            runCatching { JSONObject(it.text) }.getOrElse { error ->
-                                JSONObject().put("status", it.status).put("error", error.toString()).put("detail", it.text)
-                            }
-                        } else archive.text(path, it.status) { it.text }
+                        if (it.name == "hud_firmware") HudDiagnosticCollection.appendFirmware(archive, it)
+                        else archive.text(path, it.status) { it.text }
                     }
                     if (items.none { it.name == "hud_firmware" })
                         archive.unavailable("hud/firmware.json", "unavailable", "firmware_check_not_available")
