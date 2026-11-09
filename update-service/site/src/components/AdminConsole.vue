@@ -24,6 +24,7 @@ type Release = {
   publishedAt?: string;
   artifacts?: Array<{ name?: string }>;
   management?: Management;
+  idsInput?: string;
 };
 type ApiRelease = Omit<Release, 'channel' | 'releaseKey'> & { releaseKey?: string };
 
@@ -78,6 +79,7 @@ async function load() {
           channel: result.channel,
           releaseKey: release.releaseKey ?? release.versionName ?? release.version,
           management: { enabled: true, mode: 'all', notes: '', ...release.management },
+          idsInput: (release.management?.ids ?? []).join(', '),
         });
       }
     }
@@ -146,6 +148,12 @@ async function save(release: Release) {
   message.value = '';
   try {
     const management = release.management!;
+    const ids = management.mode === 'whitelist'
+      ? (release.idsInput ?? '')
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean)
+      : undefined;
     await request('/api/v1/admin/releases', {
       method: 'PUT',
       body: JSON.stringify({
@@ -156,7 +164,7 @@ async function save(release: Release) {
         // decided by it being the channel's current version.
         management: {
           mode: management.mode,
-          ids: management.mode === 'whitelist' ? (management.ids ?? []) : undefined,
+          ids,
           notes: management.notes,
         },
       }),
@@ -427,16 +435,12 @@ onUnmounted(() => {
                 </select>
               </label>
               <label v-if="release.management!.mode === 'whitelist'" class="wide-field">
-                客户端 ID（每行一个）
-                <textarea
-                  :value="(release.management!.ids ?? []).join('\n')"
-                  rows="5"
-                  @input="
-                    release.management!.ids = ($event.target as HTMLTextAreaElement).value
-                      .split(/[\n,，\s]+/)
-                      .map((id) => id.trim())
-                      .filter(Boolean)
-                  "
+                客户端 ID（英文逗号分隔）
+                <input
+                  v-model="release.idsInput"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
                 />
               </label>
               <p v-if="release.management!.mode === 'percentage'" class="release-meta wide-field">
