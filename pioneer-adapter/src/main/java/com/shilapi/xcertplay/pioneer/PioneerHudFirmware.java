@@ -4,7 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.IOException;
 
-/** One whitelist for startup enforcement and read-only export evidence. Never weakens the gate. */
+/** Read-only firmware hash evidence. Mismatches are recorded for diagnosis but never block the filter. */
 final class PioneerHudFirmware {
     static final String[][] MODULES = {
         {"/system/lib/libmeterservice.so", "20d3521ff1294d3a56579e1b0c649be581a94a9a0276a362ad79e130271dc660"},
@@ -32,16 +32,6 @@ final class PioneerHudFirmware {
         }
         return new JSONObject().put("scope", scope).put("checkedAtMs", System.currentTimeMillis())
             .put("passed", passed).put("modules", modules);
-    }
-    static void requirePassed(JSONObject evidence) throws Exception {
-        JSONArray modules = evidence.getJSONArray("modules");
-        for (int i = 0; i < modules.length(); i++) {
-            JSONObject item = modules.getJSONObject(i);
-            if (!"pass".equals(item.getString("status"))) throw new IOException(
-                ("mismatch".equals(item.getString("status")) ? "HUD_FILTER_FIRMWARE_MISMATCH " : "HUD_FILTER_FIRMWARE_READ_FAILED ") +
-                item.getString("path") + " expected=" + item.getString("expectedSha256") +
-                " actual=" + item.opt("actualSha256") + " error=" + item.optString("error"));
-        }
     }
     static String javaSha(String path, java.util.concurrent.Callable<Boolean> current) throws Exception {
         java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
