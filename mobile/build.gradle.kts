@@ -35,8 +35,8 @@ android {
         applicationId = "com.gtmc.app.fengyunyx.b819"
         minSdk = 23
         targetSdk = 37
-        versionCode = 5005 // 0.5.5 -> 000 005 005
-        versionName = "DiPlay凯美瑞A导航适配版_0.5.5"
+        versionCode = 5006 // 0.5.6 -> 000 005 006
+        versionName = "DiPlay凯美瑞A导航适配版_0.5.6"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
