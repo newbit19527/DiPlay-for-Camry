@@ -23,7 +23,6 @@ class DiagnosticBundleTest {
                 archive.text("report.txt") { "Update client ID: AbCd12_3-x\npeer=12:34:56:78:90:AB\npassword=secret" }
                 archive.text("failed.txt") { error("password=private") }
                 archive.text("system/root.txt", "permission_denied") { "uid=10000" }
-                archive.component(java.io.File("/system/missing-diplay.so"))
             }
             ZipFile(file).use { zip ->
                 val text = zip.getInputStream(zip.getEntry("report.txt")).reader().readText()
@@ -31,13 +30,12 @@ class DiagnosticBundleTest {
                 assertFalse(text.contains("secret")); assertFalse(text.contains("12:34:56"))
                 val manifest = JSONObject(zip.getInputStream(zip.getEntry("manifest.json")).reader().readText())
                 val items = manifest.getJSONArray("items")
-                assertEquals(4, items.length())
+                assertEquals(3, items.length())
                 assertEquals("success", items.getJSONObject(0).getString("status"))
                 assertEquals(64, items.getJSONObject(0).getString("sha256").length)
                 assertEquals("unavailable", items.getJSONObject(1).getString("status"))
                 assertFalse(manifest.toString().contains("private"))
                 assertEquals("permission_denied", items.getJSONObject(2).getString("status"))
-                assertEquals("missing", items.getJSONObject(3).getString("status"))
             }
         } finally { file.delete() }
     }
@@ -109,12 +107,14 @@ class DiagnosticBundleTest {
                 assertNotNull(zip.getEntry("hud/state.json"))
                 assertNotNull(zip.getEntry("hud/settings.json"))
                 assertNotNull(zip.getEntry("hud/recent.ndjson"))
-                assertFalse(zip.entries().asSequence().any { it.name.startsWith("components/") })
+                assertFalse(zip.entries().asSequence().any { it.name.startsWith("components/") || it.name == "hud/components.json" })
                 assertNull(zip.getEntry("system/component_inventory.txt"))
+                assertNotNull(zip.getEntry("system/root.txt"))
                 assertTrue(zip.getInputStream(zip.getEntry("report.txt")).reader().readText().contains(id!!))
                 val manifest = zip.getInputStream(zip.getEntry("manifest.json")).reader().readText()
                 assertTrue(manifest.contains("unavailable"))
-                assertTrue(manifest.replace("\\/", "/").contains("hud/components.json"))
+                assertTrue(manifest.replace("\\/", "/").contains("system/logcat.txt"))
+                assertFalse(manifest.replace("\\/", "/").contains("hud/components.json"))
             }
         } finally { file.delete(); CamryAdaptation.save(app, previous) }
     }

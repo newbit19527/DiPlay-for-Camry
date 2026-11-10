@@ -137,7 +137,7 @@ public final class PioneerRootSessionHelper {
                                     case "CALLBACK": executor = callbacks; break;
                                     case "APPLICATIONS": executor = applications; break;
                                     case "ADB": executor = tools; break;
-                                    case "HUD_COMPONENTS": case "DIAGNOSTIC": executor = diagnostics; break;
+                                    case "DIAGNOSTIC": executor = diagnostics; break;
                                     case "CANCEL": case "PING": case "HUD_START": case "HUD_LEASE": case "HUD_STATUS": case "HUD_RELEASE": executor = control; break;
                                     default: throw new IOException("ROOT_IPC_UNKNOWN_OPERATION");
                                 }
@@ -170,7 +170,6 @@ public final class PioneerRootSessionHelper {
                                             case "CALLBACK": result = PioneerRootHotspotService.callback(payload, owner, files); break;
                                             case "APPLICATIONS": result = PioneerRootApplications.handle(payload, owner); break;
                                             case "ADB": result = PioneerAdbHelper.runTask(payload.getBoolean("enabled")); break;
-                                            case "HUD_COMPONENTS": result = PioneerHudComponentInventory.collect(owner, () -> task.current(closed)); break;
                                             case "DIAGNOSTIC": result = PioneerRootDiagnostics.run(payload.getString("name"), () -> task.current(closed)); break;
                                             default: result = hudService.handle(operation, payload); break;
                                         }

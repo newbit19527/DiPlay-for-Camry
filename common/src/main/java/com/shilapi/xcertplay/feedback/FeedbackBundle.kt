@@ -1,13 +1,10 @@
 package com.shilapi.xcertplay.feedback
 
 import android.content.Context
-import com.shilapi.xcertplay.HudDiagnosticCollection
-import com.shilapi.xcertplay.pioneer.PioneerDiagnosticReader
 import com.shilapi.xcertplay.DiagnosticArchive
+import com.shilapi.xcertplay.DiagnosticEvidence
 import com.shilapi.xcertplay.DiPlayPreferences
-import com.shilapi.xcertplay.SessionLogFile
-import com.shilapi.xcertplay.WheelKeyLog
-import com.shilapi.xcertplay.WheelKeyService
+import com.shilapi.xcertplay.pioneer.PioneerDiagnosticReader
 import java.io.File
 import java.io.OutputStream
 import java.security.MessageDigest
@@ -19,27 +16,17 @@ internal object FeedbackBundle {
     private const val ARCHIVE_CONTENT_LIMIT = 4_800_000L
     private const val ENTRY_LIMIT = 2_000_000
     private const val REPORT_LIMIT = 1_500_000
-    private const val LOG_LIMIT_EACH = 512 * 1024
-    private const val LOG_LIMIT_TOTAL = 1_500_000
-    private const val WHEEL_LIMIT = 128 * 1024
-    private const val CRASH_LIMIT = 256 * 1024
-    private const val LOGCAT_LIMIT = 512 * 1024
 
     fun build(
         context: Context, meta: FeedbackMeta, output: File,
-        firmware: (Context) -> PioneerDiagnosticReader.Item = PioneerDiagnosticReader::collectHudFirmware,
+        diagnostics: (Context) -> List<PioneerDiagnosticReader.Item> = PioneerDiagnosticReader::collect,
     ): File {
         val app = context.applicationContext
         output.parentFile?.mkdirs()
         output.delete()
         val sensitive = sensitiveLiterals(app)
         val report = FeedbackReport.build(app, meta).take(REPORT_LIMIT)
-        val logcat = FeedbackLogcat.capture()
         val feedbackJson = meta.copy(bundleBytes = 0, bundleSha256 = "").toJson().toString(2)
-        val crash = File(app.filesDir, "logs/last-crash.txt")
-            .takeIf { it.isFile }
-            ?.let { readLimited(it, CRASH_LIMIT) }
-        val wheel = WheelKeyLog.report(WheelKeyService.connected()).joinToString("\n").take(WHEEL_LIMIT)
 
         DiagnosticArchive(
             output,
@@ -49,18 +36,8 @@ internal object FeedbackBundle {
             archive.raw("feedback.json", scrub(feedbackJson, sensitive).toByteArray(Charsets.UTF_8))
             archive.raw("README.txt", README.toByteArray(Charsets.UTF_8))
             archive.text("report.txt") { report }
-            // Reserve space before session logs; failed root collection must not lose local evidence.
-            HudDiagnosticCollection.appendState(app, archive)
-            runCatching { firmware(app) }.fold({
-                HudDiagnosticCollection.appendFirmware(archive, it)
-            }, { archive.unavailable("hud/firmware.json", "unavailable", it.javaClass.simpleName) })
-            crash?.let { archive.text("crash/last-crash.txt") { it } }
-            sessionLogs(app).forEach { (name, text) ->
-                archive.text("logs/$name") { text }
-            }
-            if (wheel.isNotBlank()) archive.text("logs/wheel-keys.txt") { wheel }
-            logcat.text?.let { archive.text("logcat/logcat.txt", logcat.status) { it } }
-                ?: archive.unavailable("logcat/logcat.txt", logcat.status, logcat.reason ?: "unavailable")
+            // Same evidence set as the QR export: app logs first, then HUD, then system text.
+            DiagnosticEvidence.appendAll(app, archive, diagnostics)
         }
 
         verify(output)
@@ -81,22 +58,6 @@ internal object FeedbackBundle {
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
-    private fun sessionLogs(context: Context): List<Pair<String, String>> {
-        val logs = mutableListOf<Pair<String, String>>()
-        var total = 0
-        for (name in SessionLogFile.REPORT_NAMES.takeLast(3).reversed()) {
-            val file = File(context.filesDir, "logs/$name")
-            if (!file.isFile) continue
-            val remaining = LOG_LIMIT_TOTAL - total
-            if (remaining <= 0) break
-            val text = readLimited(file, minOf(LOG_LIMIT_EACH, remaining))
-            if (text.isBlank()) continue
-            logs += name to text
-            total += text.toByteArray(Charsets.UTF_8).size
-        }
-        return logs
-    }
-
     private fun sensitiveLiterals(context: Context): List<String> = buildList {
         val name = DiPlayPreferences.phoneName(context)
         if (name.isNotBlank() && name != "Your iPhone" && name.length >= 3) add(name)
@@ -107,23 +68,6 @@ internal object FeedbackBundle {
         var result = text
         sensitive.forEach { literal -> result = result.replace(literal, "[device]") }
         return result
-    }
-
-    private fun readLimited(file: File, limit: Int): String {
-        val bytes = file.inputStream().use { input ->
-            val buffer = ByteArray(minOf(limit, 64 * 1024).coerceAtLeast(1))
-            val output = java.io.ByteArrayOutputStream()
-            var remaining = limit
-            while (remaining > 0) {
-                val count = input.read(buffer, 0, minOf(buffer.size, remaining))
-                if (count < 0) break
-                output.write(buffer, 0, count)
-                remaining -= count
-            }
-            output.toByteArray()
-        }
-        val text = String(bytes, Charsets.UTF_8)
-        return if (file.length() > limit) text + "\n[truncated]\n" else text
     }
 
     private fun verify(file: File) {
@@ -144,9 +88,9 @@ internal object FeedbackBundle {
     private const val README = """DiPlay anonymous feedback bundle
 
 This archive contains a redacted diagnostic summary, bounded DiPlay session logs, and a crash
-record when one exists, plus bounded HUD settings, state and recent metadata. HUD firmware
-evidence records only the current hashes of three navigation libraries through the shared root
-service. See manifest.json for unavailable or size-limited evidence. HUD state/history describe
+record when one exists, plus bounded HUD settings, state and recent metadata, and read-only
+system diagnostic text. HUD firmware evidence records only the current hashes of three navigation
+libraries through the shared root service. See manifest.json for unavailable or size-limited evidence. HUD state/history describe
 the current process; firmware.json records those hashes for diagnosis.
 It does not intentionally include pairing keys, hotspot passwords,
 protocol payloads, system code, installed-package inventories, phone names, Bluetooth addresses,

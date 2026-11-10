@@ -39,8 +39,13 @@ hud/state.json
 
 `result=sdk_accepted` 与 `displayVerified=false` 可以同时出现：SDK 接受不等于物理 HUD 已显示，仍需对应用户实际观察时间。
 
-## 系统组件
+## 系统组件（不采集）
 
-普通导出会通过 root 只读通道采集 HUD 定向组件：三个仪表库、`/system/bin/MeterServer`、`/system/bin/SettingServer`、TPS 代码及其 `oat` 产物、framework boot 文件、目标进程映射，以及这些 ELF 的 DT_NEEDED 依赖。清单写入 `hud/components.json`，进程 maps 另存为 `hud/process-maps/*.txt`。上限为 256 个文件、单文件 128 MiB、组件总量 256 MiB，超出部分在 manifest 中标记为 `truncated`/`skipped`。原车导航与设置 APK 及其预编译产物、Bluetooth/Blueforce 组件不采集。
+二维码导出与一键反馈使用同一套证据集合，且**不采集任何系统组件**：不复制 APK、JAR、ODEX/VDEX/ART、native 库，也不再枚举包或进程二进制。可导出的内容只有：
 
-`/report-components` 在此基础上额外追加更广的系统组件（`system/component_inventory.txt`、选定的系统库、TPS 包信息等），仍沿用同一带令牌链接和访问保护。两种包独立缓存。
+- 应用侧：`report.txt`、`crash/last-crash.txt`（如有）、`logs/` 最近 3 个会话日志、`logs/wheel-keys.txt`
+- 车机状态：`system/build.txt`、`bluetooth/state.txt`
+- HUD：`hud/state.json`、`hud/settings.json`、`hud/recent.ndjson`、`hud/firmware.json`
+- root 只读文本：`system/{identity,logcat,kernel_usb,interfaces,routes,rules,firewall,firewall6,services,processes,wifi_link}.txt`
+
+root 不可用时，`system/logcat.txt` 回退为应用自身的 logcat 捕获。旧的 `/report-components` 工程下载已移除；普通 `/report` 链接保持不变。

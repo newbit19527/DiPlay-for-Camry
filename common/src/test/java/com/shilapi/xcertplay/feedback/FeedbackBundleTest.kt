@@ -9,6 +9,7 @@ import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -98,8 +99,8 @@ class FeedbackBundleTest {
             PioneerDebugRuntime.navigationHudSnapshot = { state }
             PioneerHudDiagnostics.checkpoint(state)
             FeedbackBundle.build(context, meta(), output) {
-                PioneerDiagnosticReader.Item("hud_firmware", "success",
-                    JSONObject().put("status", "read").put("actualSha256", hash).toString())
+                listOf(PioneerDiagnosticReader.Item("hud_firmware", "success",
+                    JSONObject().put("status", "read").put("actualSha256", hash).toString()))
             }
             ZipFile(output).use { zip ->
                 fun read(name: String) = zip.getInputStream(zip.getEntry(name)).reader().readText()
@@ -120,7 +121,8 @@ class FeedbackBundleTest {
                 assertTrue(recent.size >= 2)
                 assertFalse(read("hud/recent.ndjson").contains("private-road"))
                 assertFalse(read("hud/recent.ndjson").contains("private-token"))
-                assertFalse(zip.entries().asSequence().any { it.name.startsWith("system/") || it.name.startsWith("components/") })
+                assertNotNull(zip.getEntry("system/build.txt"))
+                assertFalse(zip.entries().asSequence().any { it.name.startsWith("components/") || it.name == "hud/components.json" })
                 val items = JSONObject(read("manifest.json")).getJSONArray("items")
                 assertEquals(4, (0 until items.length()).count { items.getJSONObject(it).getString("path").startsWith("hud/") })
             }
@@ -139,7 +141,7 @@ class FeedbackBundleTest {
         try {
             PioneerDebugRuntime.navigationHudSnapshot = { JSONObject() }
             FeedbackBundle.build(context, meta(), output) {
-                PioneerDiagnosticReader.Item("hud_firmware", "unavailable", "root service unavailable")
+                listOf(PioneerDiagnosticReader.Item("hud_firmware", "unavailable", "root service unavailable"))
             }
             ZipFile(output).use { zip ->
                 val state = JSONObject(zip.getInputStream(zip.getEntry("hud/state.json")).reader().readText())

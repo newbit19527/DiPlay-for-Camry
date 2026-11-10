@@ -967,7 +967,7 @@
     <string name="connection_help_wifi_direct">Tieni attivi Wi-Fi e Bluetooth della head unit e l’iPhone sbloccato e vicino, poi riprova. Se continua a non funzionare, dimentica l’auto sull’iPhone in Impostazioni → Generali → CarPlay e connettiti di nuovo.</string>
     <string name="connection_help_existing_wifi">Controlla che la head unit e l’iPhone siano sulla stessa rete Wi-Fi e che nome e password corrispondano alle impostazioni di DiPlay, poi riprova.</string>
     <string name="settings_report_on_phone">Ottieni il report su un telefono</string>
-    <string name="settings_report_on_phone_hint">Scansiona e scarica il rapporto ZIP con log, stato del sistema e componenti disponibili. La raccolta può richiedere un minuto. Tieni aperta questa schermata fino al termine del download.</string>
+    <string name="settings_report_on_phone_hint">Scansiona e scarica il rapporto ZIP con log e stato del sistema. La raccolta può richiedere un minuto. Tieni aperta questa schermata fino al termine del download.</string>
     <string name="settings_mfi_target_description">Scegli USB/CH341 solo mentre un adattatore di autenticazione CH341 è collegato alla head unit. Senza, scegli Locale offline. Si applica alla prossima connessione.</string>
     <string name="settings_call_speakerphone">Chiamate sul vivavoce</string>
     <string name="settings_call_speakerphone_description">Per un telefono o tablet Android usato come head unit: riproduce le chiamate CarPlay sul suo altoparlante invece che sull’auricolare e usa il suo microfono vivavoce. Lascialo disattivato su una head unit di un’auto. Si applica dalla prossima chiamata.</string>

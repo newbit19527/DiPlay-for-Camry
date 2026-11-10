@@ -47,8 +47,6 @@ class SettingsBackupServer(
     private val codePage: ByteArray? = null,
     /** Built off the UI thread and streamed, never buffered as one HTTP response. */
     private val reportFile: (() -> File)? = null,
-    /** Explicit token-protected engineering download; never used by the normal report button. */
-    private val reportComponentsFile: (() -> File)? = null,
 ) {
     private var server: ServerSocket? = null
     private var thread: Thread? = null
@@ -57,7 +55,6 @@ class SettingsBackupServer(
     private val answering = Any()
     private val activeDownloads = AtomicInteger()
     private var preparedReport: File? = null
-    private var preparedComponentReport: File? = null
     internal var reportTimeoutMillis = DOWNLOAD_TIMEOUT_MILLIS
     private var token: String = ""
     private var code: String = ""
@@ -103,7 +100,6 @@ class SettingsBackupServer(
         code = SecureRandom().nextInt(CODE_SPACE).toString().padStart(CODE_DIGITS, '0')
         wrongCodes = 0
         preparedReport = null
-        preparedComponentReport = null
         server = bound
         connections = ThreadPoolExecutor(0, MAX_CONNECTIONS, 30L, TimeUnit.SECONDS, SynchronousQueue()) { task ->
             Thread(task, "settings-backup-connection").apply { isDaemon = true }
@@ -174,9 +170,7 @@ class SettingsBackupServer(
                 val request = readRequest(it.getInputStream()) ?: return
                 val reportPath = "/b/$token/report"
                 val path = request.path.substringBefore('?')
-                val withComponents = path == "/b/$token/report-components"
-                val prepareReport = if (withComponents) reportComponentsFile else reportFile
-                if (prepareReport != null && request.method == "GET" && (path == reportPath || withComponents)) {
+                if (reportFile != null && request.method == "GET" && path == reportPath) {
                     activeDownloads.incrementAndGet()
                     val counted = AtomicBoolean(true)
                     fun release() { if (counted.compareAndSet(true, false)) activeDownloads.decrementAndGet() }
@@ -188,10 +182,8 @@ class SettingsBackupServer(
                     try {
                         val file = synchronized(answering) {
                             if (closed || socket.isClosed) null
-                            else (if (withComponents) preparedComponentReport else preparedReport)?.takeIf { it.isFile }
-                                ?: runCatching { prepareReport.invoke() }.getOrNull()?.also {
-                                    if (withComponents) preparedComponentReport = it else preparedReport = it
-                                }
+                            else preparedReport?.takeIf { it.isFile }
+                                ?: runCatching { reportFile?.invoke() }.getOrNull()?.also { preparedReport = it }
                         }
                         if (file != null && file.isFile && file.length() > 0) {
                             file.inputStream().use { input ->
