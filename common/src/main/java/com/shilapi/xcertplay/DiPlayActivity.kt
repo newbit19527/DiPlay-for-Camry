@@ -1395,6 +1395,15 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }
     }
 
+    private fun pioneerVehicleSpeedControl(card: LinearLayout) {
+        toggle(card, getString(R.string.settings_pioneer_vehicle_speed),
+            getString(R.string.settings_pioneer_vehicle_speed_description),
+            AirPlayPersistence.loadPioneerVehicleSpeedEnabled(this)) { enabled ->
+            AirPlayPersistence.savePioneerVehicleSpeedEnabled(this, enabled)
+            markReconnectNeeded()
+        }
+    }
+
     private fun quickSettingsCard(): LinearLayout = card().also(::buildQuickSettings).also(::normalizeSpacing)
 
     private fun buildQuickSettings(card: LinearLayout): Unit = card.run {
@@ -2446,6 +2455,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 getString(R.string.sends_precise_android_location_as_carplay_gps_data_when_th),
                 AirPlayPersistence.loadLocationReportingEnabled(this), save = ::onLocationReportingChanged)
             card.addView(label(getString(R.string.location_reporting_reconnects), 14, MUTED))
+            if (com.shilapi.xcertplay.pioneer.CamryAdaptation.enabled(this)) pioneerVehicleSpeedControl(card)
         }
         // A launcher shortcut. Some head units' launchers list only their own cards, so a normally
         // installed app never appears on the home screen; this app draws its own way back instead (#650).

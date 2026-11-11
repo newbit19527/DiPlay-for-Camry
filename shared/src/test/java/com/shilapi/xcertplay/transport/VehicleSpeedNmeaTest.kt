@@ -53,6 +53,18 @@ class VehicleSpeedNmeaTest {
     }
 
     @Test
+    fun removingSpeedFromALaterRequestStopsTheExistingSubscription() {
+        val speed = FakeSpeed()
+        val provider = VehicleSpeedLocationProvider(FakePosition("\$GPGGA\r\n"), speed)
+        provider.onRequested(setOf(Iap2LocationMessages.VEHICLE_SPEED_DATA))
+        provider.start()
+        assertTrue(speed.started)
+        provider.onRequested(setOf(1, 2))
+        assertFalse(speed.started)
+        assertEquals("\$GPGGA\r\n", provider.latestNmea())
+    }
+
+    @Test
     fun keepsSendingSpeedWithoutAPositionFix() {
         val provider = VehicleSpeedLocationProvider(FakePosition(null), FakeSpeed())
 

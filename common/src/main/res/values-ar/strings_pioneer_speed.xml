@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_pioneer_vehicle_speed">إرسال سرعة السيارة إلى iPhone (تجريبي)</string>
+    <string name="settings_pioneer_vehicle_speed_description">عند تفعيل إرسال الموقع، يرسل سرعة السيارة ووضع ناقل الحركة من مستشعرات بايونير عند طلب iPhone. تُستبعد القراءات غير الصالحة أو القديمة. يتطلب إعادة توصيل CarPlay. لم يُختبر أثناء القيادة.</string>
+</resources>

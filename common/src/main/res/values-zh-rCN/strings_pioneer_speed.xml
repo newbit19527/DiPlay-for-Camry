@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_pioneer_vehicle_speed">向 iPhone 发送车辆速度（实验性）</string>
+    <string name="settings_pioneer_vehicle_speed_description">开启位置上报后，在 iPhone 请求时发送先锋传感器提供的新鲜车速和挡位；无效或过期数据不发送。重新连接 CarPlay 后生效，尚未行车验证。</string>
+</resources>

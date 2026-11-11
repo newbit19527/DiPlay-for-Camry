@@ -9,3 +9,6 @@
 -keep class com.shilapi.xcertplay.pioneer.PioneerRootSessionHelper { public static void main(java.lang.String[]); }
 
 -keep class com.shilapi.xcertplay.pioneer.PioneerRootHotspotService { public static *** execute(...); public static *** callback(...); public static *** warm(...); }
+
+-keep class com.shilapi.xcertplay.pioneer.PioneerSpeedListener { *; }
+-dontwarn jp.pioneer.ceam.handler.GpsChipsListener

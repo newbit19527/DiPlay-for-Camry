@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_pioneer_vehicle_speed">Vehicle speed to iPhone (experimental)</string>
+    <string name="settings_pioneer_vehicle_speed_description">With location reporting on, sends fresh vehicle speed and gear from the Pioneer sensors when the iPhone requests them. Invalid or stale readings are skipped. Requires reconnecting CarPlay. Not yet verified on a moving vehicle.</string>
+</resources>

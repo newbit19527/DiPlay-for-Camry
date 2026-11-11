@@ -67,7 +67,9 @@ class VehicleSpeedLocationProvider(
     private var lastKmh: Double? = null
 
     override fun onRequested(components: Set<Int>) {
-        speedRequested = Iap2LocationMessages.VEHICLE_SPEED_DATA in components
+        val requested = Iap2LocationMessages.VEHICLE_SPEED_DATA in components
+        if (speedRequested && !requested) speed.stop()
+        speedRequested = requested
         position.onRequested(components)
     }
 

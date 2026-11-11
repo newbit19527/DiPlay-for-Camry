@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_pioneer_vehicle_speed">車速をiPhoneに送信（実験的機能）</string>
+    <string name="settings_pioneer_vehicle_speed_description">位置情報の送信が有効な場合、iPhoneの要求に応じてパイオニアのセンサーから最新の車速とシフト位置を送信します。無効または古い値は送信しません。CarPlayの再接続が必要です。走行中は未検証です。</string>
+</resources>

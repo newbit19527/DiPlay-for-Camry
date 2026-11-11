@@ -286,7 +286,10 @@ class CarPlayHostActivity : ComponentActivity() {
             locationInformationEnabled = locationReportingEnabled,
             vehicleStatusEnabled = com.shilapi.xcertplay.hud.BydOutputSettings.batteryToIphoneActive(this),
             chargingConnectors = com.shilapi.xcertplay.hud.BydOutputSettings.chargingConnectors(this),
-            vehicleSpeedEnabled = locationReportingEnabled && com.shilapi.xcertplay.hud.BydOutputSettings.wheelSpeedToIphoneActive(this),
+            vehicleSpeedEnabled = locationReportingEnabled && if (com.shilapi.xcertplay.pioneer.CamryAdaptation.enabled(this)) {
+                AirPlayPersistence.loadPioneerVehicleSpeedEnabled(this) &&
+                    com.shilapi.xcertplay.location.PioneerVehicleSpeedSource.supported()
+            } else com.shilapi.xcertplay.hud.BydOutputSettings.wheelSpeedToIphoneActive(this),
         ),
         label = "DiPlay",
         hostName = "diplay-" + DiPlayBootstrap.deviceId(airPlayIdentity).replace(":", "").lowercase(),
@@ -5947,6 +5950,10 @@ class CarPlayHostActivity : ComponentActivity() {
         val locationProvider: Iap2LocationProvider? =
             when {
                 !config.locationReportingEnabled -> null
+                config.identification.vehicleSpeedEnabled && com.shilapi.xcertplay.pioneer.CamryAdaptation.enabled(this) ->
+                    VehicleSpeedLocationProvider(AndroidCarPlayLocationProvider(this),
+                        com.shilapi.xcertplay.location.PioneerVehicleSpeedSource(::appendLog),
+                        log = ::appendLog)
                 config.identification.vehicleSpeedEnabled -> VehicleSpeedLocationProvider(
                     AndroidCarPlayLocationProvider(this),
                     com.shilapi.xcertplay.hud.BydNavigationOutputs.wheelSpeed(applicationContext),

@@ -571,6 +571,16 @@ object AirPlayPersistence {
             .putString(KEY_USB_CHARGING_CURRENT, current.key).apply()
     }
 
+    /** Firmware-specific vehicle motion feed; never enabled by the general GPS setting alone. */
+    fun loadPioneerVehicleSpeedEnabled(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean("pioneer_vehicle_speed_enabled", false)
+
+    fun savePioneerVehicleSpeedEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("pioneer_vehicle_speed_enabled", enabled).apply()
+    }
+
     fun loadLocationReportingEnabled(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getBoolean(KEY_LOCATION_REPORTING_ENABLED, false)

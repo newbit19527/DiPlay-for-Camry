@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_pioneer_vehicle_speed">Velocità del veicolo a iPhone (sperimentale)</string>
+    <string name="settings_pioneer_vehicle_speed_description">Con la condivisione della posizione attiva, invia velocità e marcia aggiornate dai sensori Pioneer quando richieste da iPhone. Ignora i dati non validi o obsoleti. Richiede la riconnessione di CarPlay. Non ancora verificato durante la guida.</string>
+</resources>

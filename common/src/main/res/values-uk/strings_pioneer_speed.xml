@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_pioneer_vehicle_speed">Швидкість автомобіля на iPhone (експериментально)</string>
+    <string name="settings_pioneer_vehicle_speed_description">Коли передавання геопозиції ввімкнено, надсилає свіжі дані про швидкість і передачу з датчиків Pioneer на запит iPhone. Некоректні та застарілі дані пропускаються. Потрібно повторно підключити CarPlay. У русі ще не перевірено.</string>
+</resources>
