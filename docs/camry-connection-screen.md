@@ -1,13 +1,15 @@
-# 凯美瑞 CarPlay 连接界面接入说明
+# CarPlay 原生风格连接界面接入说明
 
-把 `redesign/diplay-redesign.html` 的 Apple / CarPlay 风格设计落地到连接等待界面。只替换
-`CarPlayHostActivity` 的等待层，不改主界面 `DiPlayActivity`、不改动设置页、不动连接状态机。
+把 `redesign/diplay-redesign.html` 的苹果原生 CarPlay 风格设计落地到连接等待界面。视觉层从零重做：
+深浅双主题玻璃卡片、左侧竖排 Dock、顶部状态栏、SF Symbols 风格线性图标、环形进度、
+iOS 分组列表与分段进度条；全部图形均为内联 SVG / CSS，**不含任何外部图片、字体或车辆线稿**。
+只替换 `CarPlayHostActivity` 的等待层，不改主界面 `DiPlayActivity`、不改动设置页、不动连接状态机。
 
 ## 改动文件
 
 | 文件 | 作用 |
 |---|---|
-| `common/src/main/assets/carplay-connection.html` | 新增。原型改造为可嵌入页面：`?embedded=1` 铺满屏幕、去掉浏览器预览外框、隐藏预览控件、状态栏显示真实时间、默认关闭动效；所有按钮改为发 `diplay://action/<name>`。 |
+| `common/src/main/assets/carplay-connection.html` | 单文件自包含页面。`?embedded=1` 铺满 1280×720 车机屏幕、隐藏预览控件、状态栏显示真实时间、默认关闭动效；六个连接状态各有独立图标与配色；所有按钮发 `diplay://action/<name>`。 |
 | `common/src/main/java/com/shilapi/xcertplay/connection/CamryConnectionScreen.kt` | 新增。WebView 容器，唯一持有 `ConnectionProgress` 模型；把状态投影成 JSON 推给页面；同时把所有调用转发给原 `ConnectionProgressPanel` 作为降级。 |
 | `common/src/main/java/com/shilapi/xcertplay/CarPlayHostActivity.kt` | 修改。等待层加一层全屏 `connectionScreen`；12 处面板调用改走统一门面；新增动作桥接与按钮显隐同步。 |
 
@@ -21,6 +23,12 @@ connectionPanel (viewport)
 ```
 
 `connectionPanel` 的显隐逻辑（首帧前显示、有视频流后隐藏）和窗口 inset 处理保持原样。
+
+## 启用方式
+
+分支上另有 `ConnectionScreenStylePreferences` opt-in 开关：在「设置 → 高级」打开
+`Apple-style connection screen (experimental)` 后，下一次连接使用本界面；默认仍是原生等待层。
+开关只控制 WebView 层显隐，状态管线、动作桥接与降级逻辑完全不变，因此可随时来回切换。
 
 ## 数据流
 
@@ -53,8 +61,8 @@ connectionPanel (viewport)
   降级时不会丢失尝试次数与计时。
 - 没有 `addJavascriptInterface`；禁用 content access、file-from-file、universal access；
   `shouldOverrideUrlLoading` 只放行 `file:///android_asset/carplay-connection.html`，
-  其余 scheme / 网络导航全部拦截。内联 WebP 车辆线稿不经过导航回调。
-- 车机 GPU 较弱：`motion` 默认 false（分段条流光与过渡关闭）。需要动效时调用
+  其余 scheme / 网络导航全部拦截。页面无外部资源请求，所有图形都是内联 SVG / CSS。
+- 车机 GPU 较弱：`motion` 默认 false（图标呼吸动效与 CSS 过渡关闭）。需要动效时调用
   `connectionScreen.setMotionEnabled(true)`。
 - 只覆盖 `shouldOverrideUrlLoading(WebView, String)`：该重载在全部 API level 都会被调用，
   可避免 minSdk 23 上的 `NewApi` lint 失败。
@@ -62,9 +70,11 @@ connectionPanel (viewport)
 ## 已验证 / 未验证
 
 已验证：内嵌 JS `node --check`；`R.string`（32 个）与枚举 / Snapshot 字段对照原面板无缺失；
-Kotlin 括号与常量静态检查；Edge headless 注入 6 态、深浅主题、动作桥接全通过
-（`A_BACK=back | A_DOCK=nav-settings | A_RETRY=retry | A_RESET=reset | A_FEEDBACK=feedback`）；
-1280×720 嵌入截图铺满、无预览控件、卡片完整。
+Kotlin 括号与常量静态检查；Edge headless 渲染六态、深浅主题、主界面、设置页与 1280×720 嵌入模式，
+失败态无溢出、进度弧像素采样为连续 0°–223°（62%）；
+注入契约端到端探测通过（`PCT=55% | SEG=4 | STEPS=4 | STATE=failed | A_RETRY=retry |
+A_RESET=reset | A_FEEDBACK=feedback | A_BACK=back | A_DOCK=nav-settings |
+COMPLETE_BTN=打开 CarPlay | PROBE=OK`）。
 
 未验证：**本机没有 JDK / Android SDK，`./gradlew --version` 报
 `JAVA_HOME is not set`，因此未做 Gradle 编译、lint 与实车测试。** 接入后请在有 SDK 的环境执行：
